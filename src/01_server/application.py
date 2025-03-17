@@ -1,8 +1,38 @@
 import socket
 import json
 import os
+import string
+import random
 
 requestBook = {}
+
+def getRandomID(type):
+    
+    lettersanddigits = string.ascii_uppercase + string.digits
+
+    while True:
+        
+        randomID = ""
+
+        for count in range(0,24):
+            randomID += random.choice(lettersanddigits)
+        
+        try:
+            
+            if (type == 0):
+
+                stationFilePath = (os.path.join("clientdata", "stations", (randomID + ".json")))
+                open(stationFilePath, "r")
+            
+            else:
+
+                vehicleFilePath = (os.path.join("clientdata", "vehicles", (randomID + ".json")))
+                open(vehicleFilePath, "r")
+            
+        except:
+            
+            print("ID para cadastro do proximo posto de recarga: " + randomID)
+            return randomID
 
 def listenToRequest():
     
@@ -18,9 +48,30 @@ def listenToRequest():
 
     return (add, unserializedObj)
 
-def freeChargeSpot(clientID):
+def registerChargeStation(stationID, stationAddress, requestParameters):
     
-    stationFilePath = (os.path.join("clientdata", "stations", (clientID + ".json")))
+    stationFilePath = (os.path.join("clientdata", "stations", (stationID + ".json")))
+
+    stationInfo = {}
+
+    if (len(stationInfo) >= 3):
+        
+        stationInfo["coordinates"] = requestParameters[0]
+        stationInfo["available_spots"] = requestParameters[1]
+        stationInfo["unitary_price"] = requestParameters[2]
+        
+        stationFile = open(stationFilePath, "w")
+        json.dump(stationInfo, stationFile)
+        stationFile.close()
+
+        socket_sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        CLIENT = socket.gethostbyaddr(stationAddress)
+        socket_sender.connect((CLIENT, 8002))
+        socket_sender.send(bytes('OK', 'UTF-8'))
+
+def freeChargeSpot(stationID, stationAddress):
+    
+    stationFilePath = (os.path.join("clientdata", "stations", (stationID + ".json")))
 
     try:
 
@@ -32,29 +83,82 @@ def freeChargeSpot(clientID):
         stationInfo = json.load(stationFile)
         stationFile.close()
 
-        stationInfo["available_spots"] = str(int(stationInfo["available_spots"]) + 1)
+        try:
 
-        stationFile = open(stationFilePath, "w")
-        json.dump(stationInfo, stationFile)
+            stationInfo["available_spots"] = str(int(stationInfo["available_spots"]) + 1)
+
+            stationFile = open(stationFilePath, "w")
+            json.dump(stationInfo, stationFile)
+            stationFile.close()
+
+            socket_sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            CLIENT = socket.gethostbyaddr(stationAddress)
+            socket_sender.connect((CLIENT, 8002))
+            socket_sender.send(bytes('OK', 'UTF-8'))
+        
+        except:
+
+            print("ERR: BAD REGISTRY FILE at <" + stationFilePath + ">")
+
+def occupyChargeSpot(stationID, stationAdress):
+    
+    stationFilePath = (os.path.join("clientdata", "stations", (stationID + ".json")))
+
+    try:
+
+        stationFile = open(stationFilePath, "x")
+
+    except:
+        
+        stationFile = open(stationFilePath, "r")
+        stationInfo = json.load(stationFile)
         stationFile.close()
 
-while (1==1):
+        try:
+            
+            stationInfo["available_spots"] = str(int(stationInfo["available_spots"]) - 1)
+
+            stationFile = open(stationFilePath, "w")
+            json.dump(stationInfo, stationFile)
+            stationFile.close()
+
+            socket_sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            CLIENT = socket.gethostbyaddr(stationAdress)
+            socket_sender.connect((CLIENT, 8002))
+            socket_sender.send(bytes('OK', 'UTF-8'))
+        
+        except:
+
+            print("ERR: BAD REGISTRY FILE at <" + stationFilePath + ">")
+
+#Programa inicia aqui
+randomID = getRandomID(0)
+
+while True:
     
     clientAddress, requestInfo = listenToRequest
 
-    clientID = requestInfo[0]
-    requestID = requestInfo[1]
-    requestName = requestInfo[2]
-    requestParameters = requestInfo[3]
+    if (len(requestInfo >= 4)):
+        
+        clientID = requestInfo[0]
+        requestID = requestInfo[1]
+        requestName = requestInfo[2]
+        requestParameters = requestInfo[3]
 
-    if (((clientID in requestBook) == False) or (requestBook[clientID] != requestID)):
-        
-        requestBook[clientID] = requestID
-        
-        if (requestName == "fcs"):
-            freeChargeSpot(clientID)
+        if (((clientID in requestBook) == False) or (requestBook[clientID] != requestID)):
+            
+            requestBook[clientID] = requestID
+            
+            if (requestName == "rcs"):
+                registerChargeStation(randomID, clientAddress, requestParameters)
+            elif (requestName == "fcs"):
+                freeChargeSpot(clientID, clientAddress)
+            elif (requestName == "ocs"):
+                occupyChargeSpot(clientID, clientAddress)
     
-    socket_sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    CLIENT = socket.gethostbyaddr(clientAddress)
-    socket_sender.connect((CLIENT, 8002))
-    socket_sender.send(bytes('ok', 'UTF-8'))
+    else:
+
+        socket_sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        CLIENT = socket.gethostbyaddr(clientAddress)
+        socket_sender.connect((CLIENT, 8002))
+        socket_sender.send(bytes('ERR0', 'UTF-8'))
