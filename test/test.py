@@ -2,7 +2,6 @@ import string
 import random
 import os
 import json
-import socket
 
 lettersanddigits = string.ascii_uppercase + string.digits
 
@@ -16,7 +15,7 @@ for count in range(0,24):
     randomID += random.choice(lettersanddigits)
 
 
-filePath = (os.path.join("clientdata", "stations", (randomID + ".json")))
+filePath = (os.path.join("temp", (randomID + ".json")))
 
 fileA = open(filePath, "w")
 json.dump(startInfo, fileA)
