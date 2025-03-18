@@ -1,4 +1,4 @@
 FROM python:3.9-slim
 WORKDIR /pythontest
-COPY server.py /pythontest/server.py
+COPY test.py /pythontest/test.py
 COPY /temp /pythontest/temp
