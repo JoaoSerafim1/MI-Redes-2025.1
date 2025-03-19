@@ -13,8 +13,11 @@ def verifyFile(pathList, fileName):
         
         pathString = os.path.join(pathString, pathList[pathIndex])
 
-    #Lista dos arquivos presentes no diretorio especificado
-    fileList = os.listdir(pathString)
+    if pathString != "":
+        #Lista dos arquivos presentes no diretorio especificado
+        fileList = os.listdir(pathString)
+    else:
+        fileList = os.listdir()
 
     #Verifica se existe o arquivo especificado
     if (fileName in fileList):
