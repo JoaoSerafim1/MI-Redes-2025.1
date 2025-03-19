@@ -2,13 +2,14 @@ import os
 import json
 import socket
 
+from lib.db import *
+
 class User():
     
-    def __init__(self, ID, user, battery_level, vehicle, payment_method, host): 
-        
-        self.ID = ID
-        self.battery_level = battery_level
+    def __init__(self, user, battery_level, vehicle, payment_method, host): 
+
         self.user = user
+        self.battery_level = battery_level
         self.vehicle = vehicle
         self.payment_method = payment_method
         self.payment_history = {}
@@ -25,13 +26,23 @@ class User():
             return 1
         return 0
     
-    def getNewID(self):
-        self.socket_sender.sendall((str.encode('getID')))
+    def getID(self):
+
+        msgList = ['', requestID, 'rve', '']
+        msgString = json.dumps(msgList)
+
+        self.socket_sender.sendall((str.encode(msgString)))
+        
         msg = self.socket_sender.recv(1024)
 
         while (len(msg.decode()) != 24):
-            self.socket_sender.sendall((str.encode('getID')))
+            self.socket_sender.sendall((str.encode(msgString)))
             msg = self.socket_sender.recv(1024)
+
+        if (int(requestID) < 63):
+            requestID = str(int(requestID) + 1)
+        else:
+            requestID = "0"
 
         return msg.decode()
     
@@ -43,6 +54,12 @@ class User():
             print('reserva feita')
             return 1
         print('nao foi possivel fazer a reserva')
+
+        if (int(requestID) < 63):
+            requestID = str(int(requestID) + 1)
+        else:
+            requestID = "0"
+
         return 0
     
     def nearestSpotRequest(self): #solicita distancia do posto mais proximo
@@ -55,47 +72,45 @@ class User():
     
     def paymentCheck(self): #visualiza payment_history
         print(self.payment_history)
-    
 
 #Programa inicia aqui
 #Cria um objeto da classe User
-vehicle = User("", "", "", "", "", "charge_server")
+vehicle = User("", "", "", "","charge_server")
+
+#Valores iniciais do programa
+requestID = "0"
 
 #Gera uma lista dos elementos presente no diretorio atual
 fileList = os.listdir()
 
 #Verifica se o arquivo de texto "ID.txt" esta presente, e caso nao esteja...
-if ("ID.txt" not in fileList):
-    
-    #...cria o arquivo e preenche com um novo ID
-    idFile = open("ID.txt", "w")
-    idFile.write(vehicle.getNewID())
-    idFile.close()
+if (verifyFile([""], "ID.txt") == False):
+
+    #Cria um novo arquivo
+    createFile(["ID.txt"], vehicle.getID())
 
 #Verifica se o arquivo de texto "vehicle_data.json" esta presente, e caso nao esteja...
-if ("vehicle_data.json" not in fileList):
+if (verifyFile([""], "vehicle_data.txt") == False):
     
-    #...cria um dicionario dos atributos dos veiculos e preenche com valores iniciais
+    #...cria um dicionario dos atributos do veiculo e preenche com valores iniciais
+    #Valores dos pares chave-valor sao sempre string para evitar problemas com json
     dataTable = {}
+    dataTable["user"] = ""
+    dataTable[""]
     dataTable["battery_level"] = "1.0"
 
-    #E tambem cria o arquivo e preenche com as informacoes contidas no dicionario acima (em string para evitar problemas com json)
+    #E tambem cria o arquivo e preenche com as informacoes contidas no dicionario acima
     dataFile = open("vehicle_data.json", "w")
     json.dump(dataTable, dataFile)
     dataFile.close()
 
 #Carrega as informacoes gravadas (ID)
-idFile = open("ID.txt", "r")
-vehicle_ID = idFile.read()
-idFile.close()
+vehicle_ID = readFile(["ID.txt"])
 
 #Carrega as informacoes gravadas (vehicle_data)
-dataFile = open("vehicle_data.json", "w")
-loadedTable = json.load(dataFile)
-dataFile.close()
+loadedTable = readFile(["vehicle_data.json"])
 
 #Modifica as informacoes do objeto do veiculo
-vehicle.ID = vehicle_ID
 vehicle.battery_level = loadedTable["battery_level"]
 
 #Print de teste

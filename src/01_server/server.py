@@ -74,6 +74,31 @@ class Server():
         else:
             socket_sender.send(bytes('ERR', 'UTF-8'))
 
+    def registerVehicle(vehicleAddress):
+        
+        vehicleID = self.get
+        
+        if ((len(stationInfo) >= 4) and vehicleID == randomID):
+            
+            stationFilePath = (os.path.join("clientdata", "stations", (vehicleID + ".json")))
+            
+            stationInfo = {}
+            stationInfo["coordinates"] = requestParameters[1]
+            stationInfo["available_spots"] = requestParameters[2]
+            stationInfo["unitary_price"] = requestParameters[3]
+            
+            stationFile = open(stationFilePath, "w")
+            json.dump(stationInfo, stationFile)
+            stationFile.close()
+
+            socket_sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            CLIENT = socket.gethostbyaddr(vehicleAddress)
+            socket_sender.connect((CLIENT, 8002))
+            socket_sender.send(bytes('OK', 'UTF-8'))
+        
+        else:
+            socket_sender.send(bytes('ERR', 'UTF-8'))
+
 #Programa inicia aqui
 localServer = Server()
 
@@ -94,8 +119,10 @@ while True:
             
             localServer.requestBook[clientID] = requestID
             
-            if (requestName == "rcs"):
+            if (requestName == 'rcs'):
                 localServer.registerChargeStation(requestParameters, clientAddress)
+            if (requestName == 'rve'):
+                localServer.registerVehicle(clientAddress)
     
     else:
 
