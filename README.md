@@ -12,7 +12,7 @@ Formato fixo: `bash dockerscprit.sh build`
 
 Formato fixo: `bash dockerscprit.sh transfer`
 
-- `control` Assume controle do terminal do container especificado no parametro NUM, com 0 referente ao container do servidor e 1-4 referente aos containers dos veiculos.
+- `control` Assume o controle do terminal do container especificado no parametro NUM, com 0 referente ao container do servidor e 1-4 referente aos containers dos veiculos.
 
 Exemplo: `bash dockerscprit.sh control 3`
 
