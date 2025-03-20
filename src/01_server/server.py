@@ -12,12 +12,7 @@ class Server():
 
         self.requestLog = {}
 
-        self.socket_receiver = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket_receiver.bind((socket.gethostbyname('charge_server'), 8001))
-
-        self.socket_sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    def getRandomID(self):
+    def getRandomID(self, actualRandom):
 
         lettersanddigits = string.ascii_uppercase + string.digits
 
@@ -30,24 +25,39 @@ class Server():
 
             completeFileName = (randomID + ".json")
             
-            if verifyFile(["clientdata", "clients"], completeFileName) == False:
+            if ((verifyFile(["clientdata", "clients"], completeFileName)) == False and (randomID != actualRandom)):
                 
-                print("ID para o proximo cadastro de estacao de carga: " + randomID)
                 return randomID
 
     def listenToRequest(self):
+
+        socket_receiver = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        socket_receiver.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        socket_receiver.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        socket_receiver.settimeout(2.0)
+        socket_receiver.bind((socket.gethostbyname(socket.gethostname()), 8001))
+        socket_receiver.listen(2)
+
+        msg = bytes([])
+        add = ""
         
-        self.socket_receiver.listen(2)
-        conn, add = self.socket_receiver.accept()
-        msg = conn.recv(1024)
+        try:
+            conn, add = socket_receiver.accept()
+            msg = conn.recv(1024)
+            socket_receiver.close()
+        except:
+            pass
         
         decodedBytes = msg.decode('UTF-8')
         
-        print(add)
-        print(msg)
-        print(decodedBytes)
-        
         if (len(decodedBytes) > 0):
+
+            print("=============================================")
+            print(add)
+            print(msg)
+            print(decodedBytes)
+            print("=============================================")
+            
             unserializedObj = json.loads(decodedBytes)
 
             return (add, unserializedObj)
@@ -55,15 +65,26 @@ class Server():
         return (add, "")
     
     def sendResponse(self, clientAddress, response):
-        
+
+        socket_sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        socket_sender.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        socket_sender.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+
+        clientAddressString, clientPID = clientAddress
         serializedResponse = json.dumps(response)
-        CLIENT = socket.gethostbyaddr(clientAddress[0])
+
+        print("--------------------------------------------")
+        print(clientAddress)
+        print(clientAddressString)
+        print(serializedResponse)
+        print("--------------------------------------------")
         
         try:
-            self.socket_sender.connect((CLIENT[0], 8002))
-            self.socket_sender.send(bytes(serializedResponse, 'UTF-8'))
-        except Exception:
-            pass
+            socket_sender.connect((clientAddressString, 8002))
+            socket_sender.send(bytes(serializedResponse, 'UTF-8'))
+            socket_sender.close()
+        except Exception as err:
+            print(err)
 
     def registerChargeStation(self, requestID, stationAddress, randomID, requestParameters):
         
@@ -83,7 +104,9 @@ class Server():
             self.requestLog[stationAddressString] = [requestID, 'OK']
             self.sendResponse(stationAddress, 'OK')
 
-            randomID = self.getRandomID()
+            newRandomID = self.getRandomID(randomID)
+            print("ID para o proximo cadastro de estacao de carga: " + newRandomID)
+            return newRandomID
         
         else:
 
@@ -94,16 +117,14 @@ class Server():
 
         vehicleAddressString = json.dumps(vehicleAddress)
         self.requestLog[vehicleAddressString] = [requestID, randomID]
-        self.sendResponse(vehicleAddress, randomID)
-
-        randomID = self.getRandomID()
-
+        self.sendResponse(vehicleAddress, self.getRandomID(randomID))
         
 
 #Programa inicia aqui
 localServer = Server()
 
-randomID = localServer.getRandomID()
+randomID = localServer.getRandomID("*")
+print("ID para o proximo cadastro de estacao de carga: " + randomID)
 
 requestResult = ""
 
@@ -133,4 +154,6 @@ while True:
     
     else:
 
-        localServer.sendResponse(clientAddress, 'ERR')
+        if clientAddress != "":
+            
+            localServer.sendResponse(clientAddress, 'ERR')
