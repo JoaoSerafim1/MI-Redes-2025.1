@@ -4,17 +4,20 @@ import random
 import socket
 import json
 
+from lib.db import *
+
 class Server():
     
     def __init__(self):
 
         self.requestLog = {}
+
         self.socket_receiver = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket_receiver.bind((socket.gethostbyname('charge_server'), 8001))
 
+        self.socket_sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
     def getRandomID(self):
-        
-        fileList = os.listdir("clientdata")
 
         lettersanddigits = string.ascii_uppercase + string.digits
 
@@ -24,8 +27,10 @@ class Server():
 
             for count in range(0,24):
                 randomID += random.choice(lettersanddigits)
+
+            completeFileName = (randomID + ".json")
             
-            if (("" + randomID + ".json") not in fileList):
+            if verifyFile(["clientdata", "clients"], completeFileName) == False:
                 
                 print("ID para o proximo cadastro de estacao de carga: " + randomID)
                 return randomID
@@ -48,43 +53,52 @@ class Server():
             return (add, unserializedObj)
         
         return (add, "")
+    
+    def sendResponse(self, clientAddress, response):
+        
+        serializedResponse = json.dumps(response)
+        CLIENT = socket.gethostbyaddr(clientAddress[0])
+        
+        try:
+            self.socket_sender.connect((CLIENT[0], 8002))
+            self.socket_sender.send(bytes(serializedResponse, 'UTF-8'))
+        except Exception:
+            pass
 
-    def registerChargeStation(self, requestParameters, stationAddress):
+    def registerChargeStation(self, requestID, stationAddress, randomID, requestParameters):
         
         stationID = requestParameters[0]
+        stationAddressString = json.dumps(stationAddress)
 
-        socket_sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        CLIENT = socket.gethostbyaddr(stationAddress)
-        socket_sender.connect((CLIENT, 8002))
-        
         if ((len(stationInfo) >= 4) and stationID == randomID):
-            
-            stationFilePath = (os.path.join("clientdata", "stations", (stationID + ".json")))
             
             stationInfo = {}
             stationInfo["coordinates"] = requestParameters[1]
             stationInfo["available_spots"] = requestParameters[2]
             stationInfo["unitary_price"] = requestParameters[3]
             
-            stationFile = open(stationFilePath, "w")
-            json.dump(stationInfo, stationFile)
-            stationFile.close()
+            fileName = (randomID + ".json")
+            createFile(["clientdata", "clients", fileName], stationInfo)
 
-            socket_sender.send(bytes('OK', 'UTF-8'))
+            self.requestLog[stationAddressString] = [requestID, 'OK']
+            self.sendResponse(stationAddress, 'OK')
+
+            randomID = self.getRandomID()
         
         else:
-            socket_sender.send(bytes('ERR', 'UTF-8'))
 
-    def registerVehicle(self, server, vehicleAddress, requestID):
+            self.requestLog[stationAddressString] = [requestID, 'ERR']
+            self.sendResponse(stationAddress, 'ERR')
+
+    def registerVehicle(self, requestID, vehicleAddress, randomID):
+
+        vehicleAddressString = json.dumps(vehicleAddress)
+        self.requestLog[vehicleAddressString] = [requestID, randomID]
+        self.sendResponse(vehicleAddress, randomID)
+
+        randomID = self.getRandomID()
+
         
-        vehicleID = server.getRandomID()
-
-        server.requestLog[vehicleAddress] = [requestID, vehicleID]
-
-        socket_sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        CLIENT = socket.gethostbyaddr(vehicleAddress)
-        socket_sender.connect((CLIENT[0], 8002))
-        socket_sender.send(bytes(vehicleID, 'UTF-8'))
 
 #Programa inicia aqui
 localServer = Server()
@@ -96,8 +110,7 @@ requestResult = ""
 while True:
     
     clientAddress, requestInfo = localServer.listenToRequest()
-    clientAddressString = ("" + clientAddress[0] + ":" + str(clientAddress[1]))
-    print("A")
+    clientAddressString = json.dumps(clientAddress)
 
     if (len(requestInfo) >= 4):
         
@@ -108,25 +121,16 @@ while True:
 
         if (((clientAddressString in localServer.requestLog) == False) or (localServer.requestLog[clientAddressString][0] != requestID)):
             
-            localServer.requestLog[clientID] = requestID
-            
             if (requestName == 'rcs'):
-                requestResult = lastmsg = localServer.registerChargeStation(requestParameters, clientAddressString)
+                localServer.registerChargeStation(requestID, clientAddress, randomID, requestParameters)
             if (requestName == 'rve'):
-                requestResult = localServer.registerVehicle(localServer, clientAddress[0], requestID)
-
-            localServer.requestLog[clientAddressString] = [requestID, requestResult]
+                localServer.registerVehicle(requestID, clientAddress, randomID)
 
         else:
 
-            socket_sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            CLIENT = socket.gethostbyaddr(clientAddressString)
-            socket_sender.connect((CLIENT, 8002))
-            socket_sender.sendall((localServer.requestLog[clientAddressString][1]).encode())
+            localServer.sendResponse(clientAddress, localServer.requestLog[clientAddressString][1])
+
     
     else:
 
-        socket_sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        CLIENT = socket.gethostbyaddr(clientAddressString)
-        socket_sender.connect((CLIENT, 8002))
-        socket_sender.send(bytes('ERR', 'UTF-8'))
+        localServer.sendResponse(clientAddress, 'ERR')
