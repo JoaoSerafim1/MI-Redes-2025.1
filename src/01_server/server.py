@@ -83,7 +83,7 @@ class Server():
 
         socket_sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         CLIENT = socket.gethostbyaddr(vehicleAddress)
-        socket_sender.connect((CLIENT, 8002))
+        socket_sender.connect((CLIENT[0], 8002))
         socket_sender.send(bytes(vehicleID, 'UTF-8'))
 
 #Programa inicia aqui
@@ -113,7 +113,7 @@ while True:
             if (requestName == 'rcs'):
                 requestResult = lastmsg = localServer.registerChargeStation(requestParameters, clientAddressString)
             if (requestName == 'rve'):
-                requestResult = localServer.registerVehicle(localServer, clientAddressString, requestID)
+                requestResult = localServer.registerVehicle(localServer, clientAddress[0], requestID)
 
             localServer.requestLog[clientAddressString] = [requestID, requestResult]
 

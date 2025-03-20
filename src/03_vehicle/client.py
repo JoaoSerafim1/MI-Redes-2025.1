@@ -27,7 +27,7 @@ class User():
             return 1
         return 0
     
-    def getID(self, requestID):
+    def     getID(self, requestID):
 
         msgList = ['', requestID, 'rve', '']
         
