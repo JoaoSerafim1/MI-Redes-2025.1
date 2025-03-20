@@ -1,4 +1,4 @@
-## 🐧 🐢 Usando o arquivo shell script (dockerscript.sh) para executar açoes de construcao e modificacao de ambiente docker
+## 🐧 🐢 Usando o arquivo shell script (dockerscript.sh) para executar açoes de construcao e modificacao do ambiente docker
 ```console
 bash dockerscript.sh ACAO NUM
 ```
