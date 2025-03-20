@@ -10,11 +10,30 @@ if [ $1 = 'build' ]; then
 
     docker build -t python-redes-image .
     docker network create dev_bridge
+fi
+
+if [ $1 = 'run' ]; then
+
+    docker container remove -f charge_vehicle_4
+    docker container remove -f charge_vehicle_3
+    docker container remove -f charge_vehicle_2
+    docker container remove -f charge_vehicle_1
+    docker container remove -f charge_server
+
     docker run -d -it --network=dev_bridge --name=charge_server python-redes-image
     docker run -d -it --network=dev_bridge --name=charge_vehicle_1 python-redes-image
     docker run -d -it --network=dev_bridge --name=charge_vehicle_2 python-redes-image
     docker run -d -it --network=dev_bridge --name=charge_vehicle_3 python-redes-image
     docker run -d -it --network=dev_bridge --name=charge_vehicle_4 python-redes-image
+fi
+
+if [ $1 = 'stop' ]; then
+    
+    docker container remove -f charge_vehicle_4
+    docker container remove -f charge_vehicle_3
+    docker container remove -f charge_vehicle_2
+    docker container remove -f charge_vehicle_1
+    docker container remove -f charge_server
 fi
 
 if [ $1 = 'transfer' ]; then
