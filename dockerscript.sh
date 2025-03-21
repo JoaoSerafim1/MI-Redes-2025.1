@@ -36,7 +36,7 @@ if [ $1 = 'stop' ]; then
     docker container remove -f charge_server
 fi
 
-if [ $1 = 'transfer' ]; then
+if [ $1 = 'update' ]; then
     
     docker container cp ./src/01_server charge_server:/python_redes/
     docker container cp ./src/03_vehicle charge_vehicle_1:/python_redes/
@@ -55,6 +55,24 @@ if [ $1 = 'control' ]; then
         
         docker exec -it charge_vehicle_$2 bash
     fi
+fi
+
+if [ $1 = 'import' ]; then
+    
+    docker container cp charge_server:/python_redes/01_server/clientdata ./files/imported/server
+    docker container cp charge_vehicle_1:/python_redes/03_vehicle/vehicledata ./files/imported/vehicle_1
+    docker container cp charge_vehicle_2:/python_redes/03_vehicle/vehicledata ./files/imported/vehicle_2
+    docker container cp charge_vehicle_3:/python_redes/03_vehicle/vehicledata ./files/imported/vehicle_3
+    docker container cp charge_vehicle_4:/python_redes/03_vehicle/vehicledata ./files/imported/vehicle_4
+fi
+
+if [ $1 = 'export' ]; then
+    
+    docker container cp ./files/export/server/clientdata charge_server:/python_redes/01_server
+    docker container cp ./files/export/vehicle_1/vehicledata charge_vehicle_1:/python_redes/03_vehicle
+    docker container cp ./files/export/vehicle_2/vehicledata charge_vehicle_2:/python_redes/03_vehicle
+    docker container cp ./files/export/vehicle_3/vehicledata charge_vehicle_3:/python_redes/03_vehicle
+    docker container cp ./files/export/vehicle_4/vehicledata charge_vehicle_4:/python_redes/03_vehicle
 fi
 
 if [ $1 = 'scrap' ]; then
