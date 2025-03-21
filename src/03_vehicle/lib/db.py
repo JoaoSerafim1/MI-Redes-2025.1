@@ -15,7 +15,10 @@ def verifyFile(pathList, fileName):
 
     if pathString != "":
         #Lista dos arquivos presentes no diretorio especificado
-        fileList = os.listdir(pathString)
+        try:
+            fileList = os.listdir(pathString)
+        except:
+            return False
     else:
         fileList = os.listdir()
 
