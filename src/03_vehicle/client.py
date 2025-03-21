@@ -176,13 +176,13 @@ vehicle = User()
 requestID = "0"
 
 #Verifica se o arquivo de texto "ID.txt" esta presente, e caso nao esteja...
-if (verifyFile([""], "ID.txt") == False):
+if (verifyFile(["vehicledata"], "ID.txt") == False):
     
     #Cria um novo arquivo
-    createFile(["ID.txt"], vehicle.registerVehicle(requestID))
+    createFile(["vehicledata", "ID.txt"], vehicle.registerVehicle(requestID))
 
 #Verifica se o arquivo de texto "vehicle_data.json" esta presente, e caso nao esteja...
-if (verifyFile([""], "vehicle_data.json") == False):
+if (verifyFile(["vehicledata"], "vehicle_data.json") == False):
     
     #...cria um dicionario dos atributos do veiculo e preenche com valores iniciais
     #Valores dos pares chave-valor sao sempre string para evitar problemas com json
@@ -194,13 +194,13 @@ if (verifyFile([""], "vehicle_data.json") == False):
     dataTable["payment_history"] = ""
 
     #E tambem cria o arquivo e preenche com as informacoes contidas no dicionario acima
-    createFile(["vehicle_data.json"], dataTable)
+    createFile(["vehicledata", "vehicle_data.json"], dataTable)
 
 #Carrega as informacoes gravadas (ID)
-vehicle.ID = readFile(["ID.txt"])
+vehicle.ID = readFile(["vehicledata", "ID.txt"])
 
 #Carrega as informacoes gravadas (vehicle_data)
-loadedTable = readFile(["vehicle_data.json"])
+loadedTable = readFile(["vehicledata", "vehicle_data.json"])
 
 #Modifica as informacoes do objeto do veiculo
 vehicle.battery_level = loadedTable["battery_level"]
