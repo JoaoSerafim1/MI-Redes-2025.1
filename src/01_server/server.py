@@ -15,7 +15,6 @@ class Server():
 
         #Atributos
         self.randomID = ""
-        self.requestLog = {}
 
     #Obtem o um novo ID aleatorio
     def getRandomID(self, actualRandom):
@@ -115,10 +114,25 @@ class Server():
         #Fecha a conexao (desfaz o soquete)
         socket_sender.close()
 
+    #Funcao para fazer entrada de requisicao processada
+    def registerRequestResult(self, clientAddress, requestID, requestResult):
+        
+        #Dicionario de propriedades da requisicao
+        requestTable = {}
+        requestTable["ID"] = requestID
+        requestTable["result"] = requestResult
+
+        #Obtem a string de endereco do cliente
+        clientAddressString, _ = clientAddress
+
+        #Concatena o nome do arquivo para a entrada da requisicao
+        requestFileName = (clientAddressString.strip('.') + ".json")
+
+        #Cria uma entrada referente a requisicao e ao resultado obtido
+        createFile(["clientdata", "requests", requestFileName], requestTable)
+
     #Funcao para registrar uma estacao de recarga
     def registerChargeStation(self, requestID, stationAddress, randomID, requestParameters):
-        
-        stationAddressString = json.dumps(stationAddress)
 
         #Caso os parametros da requisicao sejam do tamanho adequado...
         if (len(requestParameters) >= 4):
@@ -140,8 +154,11 @@ class Server():
 
                 #Grava as informacoes em arquivo de texto
                 createFile(["clientdata", "clients", fileName], stationInfo)
+                
+                #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
+                self.registerRequestResult(stationAddress, requestID, 'OK')
 
-                self.requestLog[stationAddressString] = [requestID, 'OK']
+                #Responde o status da requisicao para o cliente
                 self.sendResponse(stationAddress, 'OK')
 
                 #Gera um novo ID aleatorio e exibe mensagem para conhecimento do mesmo
@@ -151,18 +168,41 @@ class Server():
         
         else:
 
-            self.requestLog[stationAddressString] = [requestID, 'ERR']
+            #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
+            self.registerRequestResult(stationAddress, requestID, 'ERR')
+
+            #Responde o status da requisicao para o cliente
             self.sendResponse(stationAddress, 'ERR')
 
     #Funcao para registrar novo veiculo
     def registerVehicle(self, requestID, vehicleAddress, randomID):
 
-        vehicleAddressString = json.dumps(vehicleAddress)
-        self.requestLog[vehicleAddressString] = [requestID, randomID]
-        self.sendResponse(vehicleAddress, self.getRandomID(randomID))
+        #Obtem um ID aleatorio para o veiculo
+        vehicleRandomID = self.getRandomID(randomID)
+
+        #Concatena a string do nome do arquivo do veiculo
+        vehicleFileName = (vehicleRandomID + ".json")
+
+        #...cria um dicionario dos atributos do veiculo e preenche com valores iniciais
+        #Valores dos pares chave-valor sao sempre string para evitar problemas com json
+        dataTable = {}
+        dataTable["user"] = ""
+        dataTable["battery_level"] = "1.0"
+        dataTable["vehicle"] = ""
+        dataTable["payment_method"] = ""
+        dataTable["payment_history"] = ""
+
+        #Cria um novo arquivo para o veiculo
+        createFile(["clientdata", "clients", vehicleFileName], dataTable)
+
+        #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
+        self.registerRequestResult(vehicleAddress, requestID, vehicleRandomID)
+
+        #Responde o status da requisicao para o cliente
+        self.sendResponse(vehicleAddress, vehicleRandomID)
         
 
-#Programa inicia aqui
+#Inicio do programa
 #Cria um objeto da classe Server
 localServer = Server()
 
@@ -175,9 +215,6 @@ while True:
     
     #Espera chegar uma requisicao
     clientAddress, requestInfo = localServer.listenToRequest()
-    
-    #Gera uma string do endereco, de modo a gerenciar as requisicoes
-    clientAddressString = json.dumps(clientAddress)
 
     #Se o tamamanho da lista de requisicao for adequado
     if (len(requestInfo) >= 4):
@@ -188,8 +225,37 @@ while True:
         requestName = requestInfo[2]
         requestParameters = requestInfo[3]
 
-        #Verifica se a requisicao atual e uma nova requisicao ou uma repeticao de requisicao ja feita (o que e esperado caso clientes nao recebam resposta de sua requisicao)
-        if (((clientAddressString in localServer.requestLog) == False) or (localServer.requestLog[clientAddressString][0] != requestID)):
+        #Obtem a string de endereco do cliente
+        clientAddressString, _ = clientAddress
+
+        #Concatena o nome do arquivo para a entrada da requisicao
+        requestFileName = (clientAddressString.strip('.') + ".json")
+
+        #Cria uma entrada referente a requisicao e ao resultado obtido
+        #createFile(["clientdata", "requests", requestFileName], requestTable)
+
+        #Variavel que diz se a requisicao sera executada
+        willExecute = True
+
+        #Resultado da requisicao, inicialmente vazio
+        requestResult = ""
+        
+        #Verifica se a requisicao atual tem ID diferente de 0 e se vem de um endereco que ja fez requisicoes
+        if ((requestID != "0" ) and (verifyFile(["clientdata", "requests"], requestFileName) == True)):
+            
+            #Recupera informacoes da ultima requisicao
+            requestTable = readFile(["clientdata", "requests", requestFileName])
+            storedRequestID = requestTable["ID"]
+            requestResult = requestTable["result"]
+
+            #Verifica se o ID da ultima requisicao e o mesmo da atual
+            if(requestID == storedRequestID):
+
+                #Se for, nao sera executada requisicao
+                willExecute = False
+        
+        #Caso a intencao de execucao da requisicao ainda estiver de pe
+        if (willExecute == True):
             
             #Executa diferente requisicoes dependendo do nome da requisicao (acronimo)
             if (requestName == 'rcs'):
@@ -200,10 +266,10 @@ while True:
         #Caso contrario, manda a resposta novamente
         else:
 
-            localServer.sendResponse(clientAddress, localServer.requestLog[clientAddressString][1])
+            localServer.sendResponse(clientAddress, requestResult)
 
-    #Caso contrario, se o endereco do cliente nao for vazios
+    #Caso contrario e se o endereco do cliente nao for vazio
     elif clientAddress != "":
-            
-            #Response que a requisicao e invalida
-            localServer.sendResponse(clientAddress, 'ERR')
+        
+        #Response que a requisicao e invalida
+        localServer.sendResponse(clientAddress, 'ERR')
