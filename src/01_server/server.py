@@ -6,6 +6,7 @@ import json
 
 #Importa as bibliotecas customizadas da aplicacao
 from lib.db import *
+from lib.mf import *
 
 #Classe do servidor
 class Server():
@@ -34,7 +35,7 @@ class Server():
             completeFileName = (randomID + ".json")
             
             #Caso o arquivo esperado nao exista
-            if ((verifyFile(["clientdata", "clients"], completeFileName) == False) and (randomID != actualRandom)):
+            if ((verifyFile(["clientdata", "clients", "stations"], completeFileName) == False) and (verifyFile(["clientdata", "clients", "vehicles"], completeFileName) == False) and (randomID != actualRandom)):
                 
                 #Retorna o novo ID aleatorio
                 return randomID
@@ -135,28 +136,31 @@ class Server():
     def registerChargeStation(self, requestID, stationAddress, randomID, requestParameters):
 
         #Caso os parametros da requisicao sejam do tamanho adequado...
-        if (len(requestParameters) >= 4):
-            
+        if (len(requestParameters) >= 5):
+
             #...Recupera o ID da estacao
             stationID = requestParameters[0]
 
             #Caso o ID da estacao fornecido seja igual ao ID aleatorio atual esperado
             if (stationID == randomID):
-                
+
                 #Cria o dicionario das informacoes e preenche com as informacoes passadas como parametros da requisicao
                 stationInfo = {}
-                stationInfo["coordinates"] = requestParameters[1]
-                stationInfo["available_spots"] = requestParameters[2]
+                stationInfo["coord_x"] = requestParameters[1]
+                stationInfo["coord_y"] = requestParameters[2]
                 stationInfo["unitary_price"] = requestParameters[3]
+                stationInfo["available_slots"] = requestParameters[4]
                 
                 #Concatena o nome do arquivo
                 fileName = (randomID + ".json")
 
                 #Grava as informacoes em arquivo de texto
-                createFile(["clientdata", "clients", fileName], stationInfo)
+                createFile(["clientdata", "clients", "stations", fileName], stationInfo)
                 
                 #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
                 self.registerRequestResult(stationAddress, requestID, 'OK')
+
+                print("D")
 
                 #Responde o status da requisicao para o cliente
                 self.sendResponse(stationAddress, 'OK')
@@ -186,20 +190,54 @@ class Server():
         #...cria um dicionario dos atributos do veiculo e preenche com valores iniciais
         #Valores dos pares chave-valor sao sempre string para evitar problemas com json
         dataTable = {}
-        dataTable["user"] = ""
-        dataTable["battery_level"] = "1.0"
-        dataTable["vehicle"] = ""
-        dataTable["payment_method"] = ""
-        dataTable["payment_history"] = ""
+        dataTable["lastAddress"] = vehicleAddress
 
         #Cria um novo arquivo para o veiculo
-        createFile(["clientdata", "clients", vehicleFileName], dataTable)
+        createFile(["clientdata", "clients", "vehicles", vehicleFileName], dataTable)
 
         #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
         self.registerRequestResult(vehicleAddress, requestID, vehicleRandomID)
 
         #Responde o status da requisicao para o cliente
         self.sendResponse(vehicleAddress, vehicleRandomID)
+
+    #Funcao para retornar a distancia ate o posto de recarga mais proximo e seu ID
+    def respondWithDistance(self, requestID, vehicleAddress, requestParameters):
+        
+        #Informacoes iniciais da mensagem de resposta
+        IDToReturn = "0"
+        distanceToReturn = 0
+        unitaryPriceToReturn = "0"
+        stationList = listFiles(["clientdata", "clients", "stations"])
+
+        for stationIndex in range(0, len(stationList)):
+            
+            actualStationFileName = stationList[stationIndex]
+            actualID = ""
+            
+            for IDIndex in range(0, 24):
+
+                actualID += actualStationFileName[IDIndex]
+
+            actualStationTable = readFile(["clientdata", "clients", "stations", actualStationFileName])
+            
+            actualStationSlots = int(actualStationTable["available_slots"])
+
+            actualDistance = getDistance(requestParameters[0], requestParameters[1], float(actualStationTable["coord_x"]), float(actualStationTable["coord_y"]))
+
+            if ((actualStationSlots > 0) and ((stationIndex == 0) or (actualDistance < distanceToReturn))):
+
+                distanceToReturn = actualDistance
+                unitaryPriceToReturn = actualStationTable["unitary_price"]
+
+        #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
+        self.registerRequestResult(vehicleAddress, requestID, [IDToReturn, str(distanceToReturn), unitaryPriceToReturn])
+
+        #Responde o status da requisicao para o cliente
+        self.sendResponse(vehicleAddress, [IDToReturn, str(distanceToReturn), unitaryPriceToReturn])
+
+
+
         
 
 #Inicio do programa

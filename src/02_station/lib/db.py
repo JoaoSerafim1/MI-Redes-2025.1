@@ -1,22 +1,6 @@
 import os
 import json
 
-#Funcao que retorna uma lista dos arquivos presentes em um determinado diretorio
-def listFiles(pathList):
-
-    #String do caminho a ser aberto, inicialmente vazia
-    pathString = ""
-
-    #Percorre a lista do caminho de forma a construir a string deste
-    for pathIndex in range(0, len(pathList)):
-        
-        pathString = os.path.join(pathString, pathList[pathIndex])
-
-    try:
-        fileList = os.listdir(pathString)
-        return fileList
-    except:
-        return []
 
 #Funcao que verifica se existe um arquivo especifico no diretorio fornecido
 def verifyFile(pathList, fileName):
