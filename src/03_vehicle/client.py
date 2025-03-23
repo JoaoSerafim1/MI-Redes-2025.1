@@ -4,7 +4,7 @@ import socket
 
 #Importa as bibliotecas customizadas da aplicacao
 from lib.db import *
-
+import customtkinter as ctk 
 #Classe do usuario
 class User():
     
@@ -210,3 +210,9 @@ print("*********************************************")
 print(vehicle.ID)
 print(vehicle.battery_level)
 print("*********************************************")
+
+
+janela = ctk.CTk()
+janela.title('Cliente')
+janela.geometry('300x400')
+janela.mainloop()
