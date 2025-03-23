@@ -4,6 +4,7 @@ import socket
 
 #Importa as bibliotecas customizadas da aplicacao
 from lib.db import *
+from lib.io import *
 
 #Classe do usuario
 class User():
@@ -175,6 +176,10 @@ vehicle = User()
 #Valores iniciais do programa
 requestID = "0"
 
+#Cria um dicionario dos atributos do veiculo
+dataTable = {}
+
+
 #Verifica se o arquivo de texto "ID.txt" esta presente, e caso nao esteja...
 if (verifyFile(["vehicledata"], "ID.txt") == False):
     
@@ -184,14 +189,11 @@ if (verifyFile(["vehicledata"], "ID.txt") == False):
 #Verifica se o arquivo de texto "vehicle_data.json" esta presente, e caso nao esteja...
 if (verifyFile(["vehicledata"], "vehicle_data.json") == False):
     
-    #...cria um dicionario dos atributos do veiculo e preenche com valores iniciais
     #Valores dos pares chave-valor sao sempre string para evitar problemas com json
-    dataTable = {}
-    dataTable["user"] = ""
+    dataTable["capacity"] = str(enterNumber("Capacidade atual de carga do veiculo, em Wh: ", "ENTRADA INVALIDA."))
     dataTable["battery_level"] = "1.0"
-    dataTable["vehicle"] = ""
-    dataTable["payment_method"] = ""
-    dataTable["payment_history"] = ""
+    dataTable["coord_x"] = "1.0"
+    dataTable["coord_y"] = "1.0"
 
     #E tambem cria o arquivo e preenche com as informacoes contidas no dicionario acima
     createFile(["vehicledata", "vehicle_data.json"], dataTable)
