@@ -222,25 +222,31 @@ class Server():
         unitaryPriceToReturn = "0"
         stationList = listFiles(["clientdata", "clients", "stations"])
 
+        #Loop que percorre a lista de estacoes de carga
         for stationIndex in range(0, len(stationList)):
             
+            #Nome 
             actualStationFileName = stationList[stationIndex]
             actualID = ""
             
+            #Acha o ID da estacao a retornar
             for IDIndex in range(0, 24):
 
                 actualID += actualStationFileName[IDIndex]
 
+            #Carrega as informacoes da estacao atual
             actualStationTable = readFile(["clientdata", "clients", "stations", actualStationFileName])
-            
-            actualVehicle = int(actualStationTable["actual_vehicle"])
 
+            #Calcula a distancia
             actualDistance = getDistance(requestParameters[0], requestParameters[1], float(actualStationTable["coord_x"]), float(actualStationTable["coord_y"]))
 
-            if ((actualVehicle == "") and ((stationIndex == 0) or (actualDistance < distanceToReturn))):
-
+            #Se a estacao estiver disponivel e se estivermos no primeiro indice da lista ou se a nova menor distancia for menor que a ultima
+            if ((actualStationTable["actual_vehicle"]) and ((stationIndex == 0) or (actualDistance < distanceToReturn))):
+                
+                #Atualiza os valores a serem retornados (achou distancia menor)
                 distanceToReturn = actualDistance
                 unitaryPriceToReturn = actualStationTable["unitary_price"]
+                IDToReturn = actualID
 
         #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
         self.registerRequestResult(vehicleAddress, requestID, [IDToReturn, str(distanceToReturn), unitaryPriceToReturn])
