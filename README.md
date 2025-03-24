@@ -11,7 +11,7 @@ Utilize o comando no terminal Linux como descrito acima, sendo `ACAO` um paramê
 bash dockerscript.sh build
 ```
 
-`run` Instancia os containers para a aplição (1 de servidor e 4 de veículos).
+`run` Instancia os containers para a aplição (1 de servidor, 2 de estações e 4 de veículos).
 
 - Formato fixo:
 ```console
@@ -32,11 +32,11 @@ bash dockerscript.sh stop
 bash dockerscript.sh update
 ```
 
-`control` Assume o controle do terminal do container especificado no parâmetro `NUM`, sendo 0 referente ao container do servidor, enquanto que 1-4 é referente aos containers dos veículos.
+`control` Assume o controle do terminal do container especificado no parâmetro `NUM`, sendo 0 referente ao container do servidor, 1-2 referente aos containers das estações, e 3-6 referente aos containers dos veículos.
 
 - Exemplo:
 ```console
-bash dockerscript.sh control 3
+bash dockerscript.sh control 2
 ```
 
 `import` Copia os arquivos e/ou diretórios gerados pelas aplicações em execução nos containers para a pasta `/files/imported`.
