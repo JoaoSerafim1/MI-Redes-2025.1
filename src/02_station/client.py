@@ -15,12 +15,12 @@ class Station():
         #Atributos
         self.ID = ""
         self.unitary_price = 0
-        self.available_slots = 0
+        self.actualVehicleID = ""
 
     #Funcao para receber uma resposta de requisicao
     def receiveFromServer(self):
 
-        #Cria o soquete, torna a conexao reciclavel, estabelece um timeout (2 segundos), reserva a porta local 8002 para a conexao e liga o modo de escuta
+        #Cria o soquete, torna a conexao reciclavel, estabelece um timeout (10 segundos), reserva a porta local 8002 para a conexao e liga o modo de escuta
         socket_receiver = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         socket_receiver.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         socket_receiver.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
@@ -94,13 +94,13 @@ class Station():
         socket_sender.close()
     
     #Funcao para registrar a estacao
-    def registerStation(self, requestID, coord_x, coord_y, unitary_price, available_slots):
+    def registerStation(self, requestID, coord_x, coord_y, unitary_price):
         
         #ID da estacao
         stationID = input("ID para a estacao de carga (como fornecido pelo servidor): ")
 
         #Parametros da requisicao
-        requestParameters = [stationID, coord_x, coord_y, unitary_price, available_slots]
+        requestParameters = [stationID, coord_x, coord_y, unitary_price]
 
         #Formula o conteudo da requisicao a ser enviada
         #O conteudo e uma lista de ao menos 4 elementos (ID de quem requeriu, ID da requisicao, nome da requisicao e parametros da mesma)
@@ -119,7 +119,7 @@ class Station():
             stationID = input("ID para a estacao de carga (como fornecido pelo servidor): ")
 
             #Parametros da requisicao
-            requestParameters = [stationID, coord_x, coord_y, unitary_price, available_slots]
+            requestParameters = [stationID, coord_x, coord_y, unitary_price]
 
             #Formula o conteudo da requisicao a ser enviada
             #O conteudo e uma lista de ao menos 4 elementos (ID de quem requeriu, ID da requisicao, nome da requisicao e parametros da mesma)
@@ -163,10 +163,10 @@ if (verifyFile(["stationdata"], "ID.txt") == False):
     dataTable["coord_x"] = str(enterNumber("Coordenada x do posto de recarga: ", "ENTRADA INVALIDA."))
     dataTable["coord_y"] = str(enterNumber("Coordenada y do posto de recarga: ", "ENTRADA INVALIDA."))
     dataTable["unitary_price"] = str(enterNumber("Preco unitario do Wh, em BRL: ", "ENTRADA INVALIDA."))
-    dataTable["available_slots"] = str(enterInt("Quantidade de pontos de carga disponiveis no local: ", "ENTRADA INVALIDA."))
+    dataTable["actual_vehicle"] = ""
 
     #ID da estacaodataTable["coord_x"]
-    stationID = station.registerStation(requestID, dataTable["coord_x"], dataTable["coord_y"], dataTable["unitary_price"], dataTable["available_slots"])
+    stationID = station.registerStation(requestID, dataTable["coord_x"], dataTable["coord_y"], dataTable["unitary_price"])
     
     #Cria um novo arquivo
     createFile(["stationdata", "ID.txt"], stationID)
@@ -184,12 +184,10 @@ station.ID = readFile(["stationdata", "ID.txt"])
 loadedTable = readFile(["stationdata", "station_data.json"])
 
 #Modifica as informacoes do objeto da estacao
-station.available_slots = int(loadedTable["available_slots"])
 station.unitary_price = float(loadedTable["unitary_price"])
 
 #Print de teste
 print("*********************************************")
 print(station.ID)
-print(station.available_slots)
 print(station.unitary_price)
 print("*********************************************")

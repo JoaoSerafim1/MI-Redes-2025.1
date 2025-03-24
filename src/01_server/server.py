@@ -7,6 +7,7 @@ import json
 #Importa as bibliotecas customizadas da aplicacao
 from lib.db import *
 from lib.mf import *
+from lib.pr import *
 
 #Classe do servidor
 class Server():
@@ -41,12 +42,16 @@ class Server():
                 return randomID
 
     #Funcao para receber uma requisicao
-    def listenToRequest(self):
+    def listenToRequest(self, timeout):
 
         #Cria o soquete, torna a conexao reciclavel, reserva a porta local 8001 para a conexao e liga o modo de escuta        
         socket_receiver = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         socket_receiver.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         socket_receiver.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+
+        if (timeout != 0):
+            socket_receiver.settimeout(timeout)
+
         socket_receiver.bind((socket.gethostbyname(socket.gethostname()), 8001))
         socket_receiver.listen(2)
 
@@ -136,7 +141,7 @@ class Server():
     def registerChargeStation(self, requestID, stationAddress, randomID, requestParameters):
 
         #Caso os parametros da requisicao sejam do tamanho adequado...
-        if (len(requestParameters) >= 5):
+        if (len(requestParameters) >= 4):
 
             #...Recupera o ID da estacao
             stationID = requestParameters[0]
@@ -149,9 +154,10 @@ class Server():
                 stationInfo["coord_x"] = requestParameters[1]
                 stationInfo["coord_y"] = requestParameters[2]
                 stationInfo["unitary_price"] = requestParameters[3]
-                stationInfo["available_slots"] = requestParameters[4]
+                stationInfo["actual_vehicle"] = ""
+                stationInfo["station_address"] = stationAddress
                 
-                #Concatena o nome do arquivo
+                #Concatena o nome do arquivo/
                 fileName = (randomID + ".json")
 
                 #Grava as informacoes em arquivo de texto
@@ -160,8 +166,6 @@ class Server():
                 #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
                 self.registerRequestResult(stationAddress, requestID, 'OK')
 
-                print("D")
-
                 #Responde o status da requisicao para o cliente
                 self.sendResponse(stationAddress, 'OK')
 
@@ -169,6 +173,14 @@ class Server():
                 newRandomID = self.getRandomID(randomID)
                 print("ID para o proximo cadastro de estacao de carga: " + newRandomID)
                 return newRandomID
+            
+            else:
+
+                #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
+                self.registerRequestResult(stationAddress, requestID, 'ERR')
+
+                #Responde o status da requisicao para o cliente
+                self.sendResponse(stationAddress, 'ERR')
         
         else:
 
@@ -190,7 +202,7 @@ class Server():
         #...cria um dicionario dos atributos do veiculo e preenche com valores iniciais
         #Valores dos pares chave-valor sao sempre string para evitar problemas com json
         dataTable = {}
-        dataTable["lastAddress"] = vehicleAddress
+        dataTable["purchases"] = []
 
         #Cria um novo arquivo para o veiculo
         createFile(["clientdata", "clients", "vehicles", vehicleFileName], dataTable)
@@ -221,11 +233,11 @@ class Server():
 
             actualStationTable = readFile(["clientdata", "clients", "stations", actualStationFileName])
             
-            actualStationSlots = int(actualStationTable["available_slots"])
+            actualVehicle = int(actualStationTable["actual_vehicle"])
 
             actualDistance = getDistance(requestParameters[0], requestParameters[1], float(actualStationTable["coord_x"]), float(actualStationTable["coord_y"]))
 
-            if ((actualStationSlots > 0) and ((stationIndex == 0) or (actualDistance < distanceToReturn))):
+            if ((actualVehicle == "") and ((stationIndex == 0) or (actualDistance < distanceToReturn))):
 
                 distanceToReturn = actualDistance
                 unitaryPriceToReturn = actualStationTable["unitary_price"]
@@ -236,9 +248,100 @@ class Server():
         #Responde o status da requisicao para o cliente
         self.sendResponse(vehicleAddress, [IDToReturn, str(distanceToReturn), unitaryPriceToReturn])
 
+    #Funcao para registrar uma estacao de recarga
+    def attemptCharge(self, requestID, vehicleAddress, requestParameters):
 
+        #Caso os parametros da requisicao sejam do tamanho adequado...
+        if (len(requestParameters) >= 4):
 
-        
+            #Recupera as informacoes
+            purchaseID = requestParameters[0]
+            vehicleID = requestParameters[1]
+            stationID = requestParameters[2]
+            paidAmmount = requestParameters[3]
+
+            #Nome do arquivo do veiculo de carga a ser analizado
+            vehicleFileName = (vehicleID + ".json")
+            #Nome do arquivo da estacao de carga a ser analizado
+            stationFileName = (stationID + ".json")
+
+            #Caso o ID do veiculo/estacao fornecidos sejam validos e a compra seja confirmada
+            if ((verifyFile(["clientdata", "clients", "vehicles"], vehicleFileName) == True) and (verifyFile(["clientdata", "clients", "stations"], stationFileName) == True) and confirmPurchase(purchaseID) == True):
+
+                #Carrega o dicionario de informacoes da estacao
+                stationInfo = readFile(["clientdata", "clients", "stations", stationFileName])
+
+                #Caso o ponto de carga esteja disponivel para a operacao
+                if (stationInfo["actual_vehicle"] == ""):
+
+                    #Nome do arquivo da compra
+                    purchaseFileName = (purchaseID + ".json")
+
+                    #Cria um dicionario das informacoes da compra, adiciona informacoes e grava um arquivo
+                    purchaseTable = {}
+                    purchaseTable["vehicle_ID"] = vehicleID
+                    purchaseTable["station_ID"] = stationID
+                    purchaseTable["total"] = paidAmmount
+                    purchaseTable["unitary_price"] = stationInfo["unitary_price"]
+                    createFile(["clientdata", "purchases", purchaseFileName])
+
+                    #Carrega o dicionario de informacoes do veiculo, Adiciona a compra a lista de compras do veiculo (cliente) e grava o resultado
+                    vehicleInfo = readFile(["clientdata", "clients", "vehicles", vehicleFileName])
+                    vehicleInfo["purchases"].append(purchaseID)
+                    createFile(["clientdata", "clients", "vehicles", vehicleFileName], vehicleInfo)
+
+                    #Modifica o veiculo atual na estacao de carga e grava o resultado
+                    stationInfo["actual_vehicle"] = vehicleID
+                    createFile(["clientdata", "clients", "stations", stationFileName], stationInfo)
+
+                    #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
+                    self.registerRequestResult(vehicleAddress, requestID, 'OK')
+
+                    #Envia mensagem a estacao de carga
+                    self.sendResponse(stationInfo["station_address"], vehicleID)
+
+                    #Espera resposta da estacao de carga
+                    (_, response) = self.listenToRequest(5)
+
+                    #Enquanto nao for o esperado
+                    while (response != "OK"):
+
+                        #Envia mensagem a estacao de carga
+                        self.sendResponse(stationInfo["station_address"], vehicleID)
+
+                        #Espera resposta da estacao de carga
+                        (_, response) = self.listenToRequest(5)
+                    
+                    #Envia mensagem de resposta ao veiculo
+                    self.sendResponse(vehicleAddress, 'OK')
+
+                else:
+                    
+                    #Caso contrario (slot de carga ocupado durante a compra), cancela a compra
+                    cancelPurchase(purchaseID)
+
+                    #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
+                    self.registerRequestResult(vehicleAddress, requestID, 'ERR')
+
+                    #Envia mensagem de resposta ao veiculo
+                    self.sendResponse(vehicleAddress, 'ERR')
+
+            else:
+
+                #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
+                self.registerRequestResult(vehicleAddress, requestID, 'ERR')
+
+                #Responde o status da requisicao para o cliente
+                self.sendResponse(vehicleAddress, 'ERR')
+
+        else:
+
+            #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
+            self.registerRequestResult(vehicleAddress, requestID, 'ERR')
+
+            #Responde o status da requisicao para o cliente
+            self.sendResponse(vehicleAddress, 'ERR')
+
 
 #Inicio do programa
 #Cria um objeto da classe Server
@@ -252,7 +355,7 @@ print("ID para o proximo cadastro de estacao de carga: " + localServer.randomID)
 while True:
     
     #Espera chegar uma requisicao
-    clientAddress, requestInfo = localServer.listenToRequest()
+    clientAddress, requestInfo = localServer.listenToRequest(0)
 
     #Se o tamamanho da lista de requisicao for adequado
     if (len(requestInfo) >= 4):
