@@ -129,7 +129,7 @@ class User():
         return 0
     
     def bookChargeSpot(self, requestID): #reserva posto
-
+        bookButton.config(text='teste')
         requestContent = ['', requestID, 'bcs', '']
         self.sendRequest('charge_server', requestContent)
         (add, response) = self.listenToResponse()
@@ -187,9 +187,9 @@ if (verifyFile(["vehicledata"], "vehicle_data.json") == False):
     #...cria um dicionario dos atributos do veiculo e preenche com valores iniciais
     #Valores dos pares chave-valor sao sempre string para evitar problemas com json
     dataTable = {}
-    dataTable["user"] = ""
+    dataTable["user"] = "Fulano"
     dataTable["battery_level"] = "1.0"
-    dataTable["vehicle"] = ""
+    dataTable["vehicle"] = "Byd"
     dataTable["payment_method"] = ""
     dataTable["payment_history"] = ""
 
@@ -212,7 +212,19 @@ print(vehicle.battery_level)
 print("*********************************************")
 
 
-janela = ctk.CTk()
-janela.title('Cliente')
-janela.geometry('300x400')
-janela.mainloop()
+frame = ctk.CTk()
+frame._set_appearance_mode('dark')
+frame.title('Cliente')
+frame.geometry('300x400')
+userInfo = ctk.CTkLabel(frame,text='fulano')
+userInfo.pack(pady=10)
+
+spotRequestButton = ctk.CTkButton(frame,text='Distância até posto de recarga',command=vehicle.nearestSpotRequest)
+spotRequestButton.pack(pady=10)
+
+spotDistanceInfo = ctk.CTkLabel(frame,text="")
+spotDistanceInfo.pack(pady=10)
+
+bookButton = ctk.CTkButton(frame,text='reservar posto',command=vehicle.bookChargeSpot)
+bookButton.pack(pady=10)
+frame.mainloop()
