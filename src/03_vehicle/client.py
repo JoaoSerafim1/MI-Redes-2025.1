@@ -101,7 +101,7 @@ class User():
         
         #Formula o conteudo da requisicao a ser enviada
         #O conteudo e uma lista de ao menos 4 elementos (ID de quem requeriu, ID da requisicao, nome da requisicao e parametros da mesma)
-        requestContent = ['', requestID, 'rve', '']
+        requestContent = [requestID, 'rve', '']
         
         #Envia a requisicao para o servidor da aplicacao
         self.sendRequest('charge_server', requestContent)
@@ -111,8 +111,10 @@ class User():
 
         #Se a resposta nao for adequada (string de 24 caracteres alfanumericos)...
         while (len(response) != 24):
+            
             #Envia novamente a requisicao e espera a resposta
             self.sendRequest('charge_server', requestContent)
+
             (add, response) = self.listenToResponse()
 
         #Muda o ID da requisicao (para controle por parte do servidor do que ja foi executado)
@@ -131,7 +133,7 @@ class User():
     
     def bookChargeSpot(self, requestID): #reserva posto
 
-        requestContent = ['', requestID, 'bcs', '']
+        requestContent = [requestID, 'bcs', '']
         self.sendRequest('charge_server', requestContent)
         (add, response) = self.listenToResponse()
 
@@ -148,7 +150,7 @@ class User():
     
     def nearestSpotRequest(self, requestID): #solicita distancia do posto mais proximo
         
-        requestContent = ['', requestID, 'nsr', '']
+        requestContent = [requestID, 'nsr', '']
         self.sendRequest('charge_server', requestContent)
         (add, response) = self.listenToResponse()
 
@@ -184,7 +186,7 @@ dataTable = {}
 if (verifyFile(["vehicledata"], "ID.txt") == False):
     
     #Cria um novo arquivo
-    createFile(["vehicledata", "ID.txt"], vehicle.registerVehicle(requestID))
+    writeFile(["vehicledata", "ID.txt"], vehicle.registerVehicle(requestID))
 
 #Verifica se o arquivo de texto "vehicle_data.json" esta presente, e caso nao esteja...
 if (verifyFile(["vehicledata"], "vehicle_data.json") == False):
@@ -196,7 +198,7 @@ if (verifyFile(["vehicledata"], "vehicle_data.json") == False):
     dataTable["coord_y"] = "1.0"
 
     #E tambem cria o arquivo e preenche com as informacoes contidas no dicionario acima
-    createFile(["vehicledata", "vehicle_data.json"], dataTable)
+    writeFile(["vehicledata", "vehicle_data.json"], dataTable)
 
 #Carrega as informacoes gravadas (ID)
 vehicle.ID = readFile(["vehicledata", "ID.txt"])
