@@ -165,9 +165,11 @@ class User():
 
         return response
         
-    def pay(self, cash, requestID): #metodo que envia a solicitacao de pagamento ao servidor, recebe a confirmação e atualiza payment_history 
+    def pay(self, paidAmount, requestID): #metodo que envia a solicitacao de pagamento ao servidor, recebe a confirmação e atualiza payment_history 
         purchaseID = str(uuid.UUID.int)
-        requestContent = ['',requestID,'rvp','']
+        requestParameters = [purchaseID,self.ID,'',paidAmount]
+        
+        requestContent = ['',requestID,'rvp',requestParameters]
         self.sendRequest('charge_server',requestContent)
         (add,response) = self.listenToResponse()
 
