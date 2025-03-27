@@ -262,7 +262,8 @@ while True:
                 localServer.registerChargeStation(requestID, clientAddress, localServer.randomID, requestParameters)
             if (requestName == 'rve'):
                 localServer.registerVehicle(requestID, clientAddress, localServer.randomID)
-
+            if (requestName == 'rvp'):
+                localServer.attemptCharge(requestID,clientAddress, requestParameters)
         #Caso contrario, manda a resposta novamente
         else:
 
