@@ -3,7 +3,6 @@ import string
 import random
 import socket
 import json
-import time
 import threading
 
 #Importa as bibliotecas customizadas da aplicacao
@@ -515,9 +514,6 @@ def attemptCharge(requestID, vehicleAddress, requestParameters):
                 #Enquanto nao for o esperado
                 while (response != "OK"):
 
-                    #Poe em cooldown antes de enviar uma nova mensagem e esperar resposta
-                    time.sleep(2)
-
                     #Envia mensagem a estacao de carga
                     sendResponse(stationInfo["station_address"], vehicleID)
 
@@ -638,12 +634,6 @@ def requestCatcher():
             
             #Response que a requisicao e invalida
             sendResponse(clientAddress, 'ERR')
-
-        #Se nao receber mensagem alguma
-        else:
-
-            #Poe em cooldown para esperar nova requisicao
-            time.sleep(2)
 
 #Inicio do programa
 #Obtem um ID aleatorio de 24 elementos alfanumericos e exibe mensagem da operacao
