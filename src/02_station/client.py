@@ -153,13 +153,13 @@ class Station():
         #Retorna a resposta (ID da estacao)
         return stationID
     
-    def updateStationAddress(self, stationID):
+    def updateStationAddress(self):
 
         global requestID
 
         #Formula o conteudo da requisicao a ser enviada
         #O conteudo e uma lista de ao menos 4 elementos (ID de quem requeriu, ID da requisicao, nome da requisicao e parametros da mesma)
-        requestContent = ['', requestID, 'usa', [stationID]]
+        requestContent = ['', requestID, 'usa', [self.ID]]
         
         #Envia a requisicao para o servidor da aplicacao
         self.sendToServer('charge_server', requestContent)
@@ -168,11 +168,57 @@ class Station():
         (_, response) = self.receiveFromServer(10)
 
         #Se a resposta nao for adequada ("OK" ou "NF")...
-        while (response != "OK" or response != "NF"):
+        while (response != "OK" and response != "NF"):
             
             #Formula o conteudo da requisicao a ser enviada
             #O conteudo e uma lista de ao menos 4 elementos (ID de quem requeriu, ID da requisicao, nome da requisicao e parametros da mesma)
-            requestContent = ['', requestID, 'usa', [stationID]]
+            requestContent = ['', requestID, 'usa', [self.ID]]
+            
+            #Envia a requisicao para o servidor da aplicacao
+            self.sendToServer('charge_server', requestContent)
+
+            #Espera a resposta
+            (_, response) = self.receiveFromServer(10)
+
+        #Muda o ID da requisicao (para controle por parte do servidor do que ja foi executado)
+        if (int(requestID) < 63):
+            requestID = str(int(requestID) + 1)
+        else:
+            requestID = "1"
+
+    def chargeSequence(self):
+
+        global requestID
+        global loadedTable
+        
+        #Enquanto o ID do veiculo em processo de carga nao seja vazio
+        while (self.actualVehicleID != ""):
+
+            #Executa a funcao externa de carga (encontrado em lib/ch.py)
+            self.remainingCharge = doCharge(self.actualVehicleID, self.remainingCharge)
+            loadedTable["remaining_charge"] = str(self.remainingCharge)
+
+            #Caso a carga restante seja 0, sabemos que acabou o processo, e resetamos o ID do veiculo para vazio
+            if (self.remainingCharge == 0):
+                self.actualVehicleID = ""
+                loadedTable["actual_vehicle"] = self.actualVehicleID
+
+        #Formula o conteudo da requisicao a ser enviada
+        #O conteudo e uma lista de ao menos 4 elementos (ID de quem requeriu, ID da requisicao, nome da requisicao e parametros da mesma)
+        requestContent = ['', requestID, 'fcs', [self.ID]]
+        
+        #Envia a requisicao para o servidor da aplicacao
+        self.sendToServer('charge_server', requestContent)
+
+        #Espera a resposta
+        (_, response) = self.receiveFromServer(10)
+
+        #Se a resposta nao for adequada ("OK" ou "NF")...
+        while (response != "OK" and response != "NF"):
+            
+            #Formula o conteudo da requisicao a ser enviada
+            #O conteudo e uma lista de ao menos 4 elementos (ID de quem requeriu, ID da requisicao, nome da requisicao e parametros da mesma)
+            requestContent = ['', requestID, 'fcs', [self.ID]]
             
             #Envia a requisicao para o servidor da aplicacao
             self.sendToServer('charge_server', requestContent)
@@ -231,7 +277,7 @@ else:
 
     #Carrega as informacoes gravadas (ID)
     station.ID = readFile(["stationdata", "ID.txt"])
-    station.updateStationAddress(station.ID)
+    station.updateStationAddress()
 
 #Carrega as informacoes gravadas (ID)
 station.ID = readFile(["stationdata", "ID.txt"])
@@ -261,16 +307,10 @@ while True:
     station.actualVehicleID = loadedTable["actual_vehicle"]
     station.remainingCharge = loadedTable["remaining_charge"]
 
-    #Enquanto o veiculo atual tem um ID, faz operacao de carga
-    while (station.actualVehicleID != ""):
+    #Se tem veiculo com carga pendente, faz operacao de carga
+    if (station.actualVehicleID != ""):
 
-        station.remainingCharge = doCharge(station.actualVehicleID, station.remainingCharge)
-        loadedTable["remaining_charge"] = str(station.remainingCharge)
-
-        #Caso a carga restante seja 0, sabemos que acabou o processo, e resetamos o ID do veiculo para vazio
-        if (station.remainingCharge == 0):
-            station.actualVehicleID = ""
-            loadedTable["actual_vehicle"] = station.actualVehicleID
+        station.chargeSequence()
 
     #Espera chegar uma requisicao
     serverAddress, resquestInfo = station.receiveFromServer(0)
@@ -280,9 +320,16 @@ while True:
 
     #Caso o endereco seja de fato do servidor e seja recebido um ID e quantidade de carga
     if ((serverAddressString.equals(socket.gethostbyname('charge_server')) == True) and (len(resquestInfo) >= 2)) :
+        
+        #Caso nao exista operacao de carga em andamento
+        if (loadedTable["actual_vehicle"] == ""):
+            
+            #Inicia nova operacao de carga
+            loadedTable["actual_vehicle"] = resquestInfo[0]
+            loadedTable["remaining_charge"] = str((float(resquestInfo[1]))/station.unitaryPrice)
 
-        loadedTable["actual_vehicle"] = resquestInfo[0]
-        loadedTable["remaining_charge"] = (str((float(resquestInfo[1]))/station.unitaryPrice))
+        #Sinaliza ao servidor que recebeu a mensagem
+        station.sendToServer('charge_server', 'OK')
 
     #Grava as informacoes atualizadas
     createFile(["clientdata", "station_data.json"], loadedTable)

@@ -188,11 +188,12 @@ def registerRequestResult(clientAddress, requestID, requestResult):
 def registerChargeStation(requestID, stationAddress, requestParameters):
     
     global fileLock
+    global randomIDLock
     global randomID
 
     #Caso os parametros da requisicao sejam do tamanho adequado...
     if (len(requestParameters) >= 4):
-
+        
         #...Recupera o ID da estacao
         stationID = requestParameters[0]
 
@@ -256,7 +257,7 @@ def registerChargeStation(requestID, stationAddress, requestParameters):
 def registerVehicle(requestID, vehicleAddress):
     
     global fileLock
-    global randomID
+    global randomIDLock
 
     #...cria um dicionario dos atributos do veiculo e preenche com valores iniciais
     #Valores dos pares chave-valor sao sempre string para evitar problemas com json
@@ -285,6 +286,98 @@ def registerVehicle(requestID, vehicleAddress):
 
     #Responde o status da requisicao para o cliente
     sendResponse(vehicleAddress, vehicleRandomID)
+
+#Funcao para atualizar o endereco da estacao de carga
+def updateStationAddress(requestID, stationAddress, requestParameters):
+    
+    global fileLock
+    global randomID
+
+    #Caso os parametros da requisicao sejam do tamanho adequado...
+    if (len(requestParameters) >= 1):
+
+        #...Recupera o ID da estacao
+        stationID = requestParameters[0]
+
+        #Concatena o nome do arquivo/
+        fileName = (stationID + ".json")
+
+        fileLock.acquire()
+
+        #Caso o ID da estacao fornecido seja igual ao ID aleatorio atual esperado
+        if (verifyFile(["clientdata", "clients", "stations"], fileName) == True):
+
+            #Recupera informacoes da estacao de carga
+            stationInfo = readFile(["clientdata", "clients", "stations", fileName])
+
+            stationInfo["station_address"] = stationAddress
+
+            #Grava as informacoes em arquivo de texto
+            createFile(["clientdata", "clients", "stations", fileName], stationInfo)
+
+            fileLock.release()
+            
+            #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
+            registerRequestResult(stationAddress, requestID, 'OK')
+
+            #Responde o status da requisicao para o cliente
+            sendResponse(stationAddress, 'OK')
+
+        else:
+
+            fileLock.release()
+
+            #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
+            registerRequestResult(stationAddress, requestID, 'NF')
+
+            #Responde o status da requisicao para o cliente
+            sendResponse(stationAddress, 'NF')
+
+#Funcao para liberar estacao de carga
+def freeChargingStation(requestID, stationAddress, requestParameters):
+    
+    global fileLock
+    global randomID
+
+    #Caso os parametros da requisicao sejam do tamanho adequado...
+    if (len(requestParameters) >= 1):
+
+        #...Recupera o ID da estacao
+        stationID = requestParameters[0]
+
+        #Concatena o nome do arquivo/
+        fileName = (stationID + ".json")
+
+        fileLock.acquire()
+
+        #Caso o ID da estacao fornecido seja igual ao ID aleatorio atual esperado
+        if (verifyFile(["clientdata", "clients", "stations"], fileName) == True):
+
+            #Recupera informacoes da estacao de carga
+            stationInfo = readFile(["clientdata", "clients", "stations", fileName])
+
+            stationInfo["actual_vehicle"] = ""
+
+            #Grava as informacoes em arquivo de texto
+            createFile(["clientdata", "clients", "stations", fileName], stationInfo)
+
+            fileLock.release()
+            
+            #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
+            registerRequestResult(stationAddress, requestID, 'OK')
+
+            #Responde o status da requisicao para o cliente
+            sendResponse(stationAddress, 'OK')
+
+        else:
+
+            fileLock.release()
+
+            #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
+            registerRequestResult(stationAddress, requestID, 'NF')
+
+            #Responde o status da requisicao para o cliente
+            sendResponse(stationAddress, 'NF')
 
 #Funcao para retornar a distancia ate o posto de recarga mais proximo e seu ID
 def respondWithDistance(requestID, vehicleAddress, requestParameters):
@@ -526,6 +619,14 @@ def requestCatcher():
                 elif (requestName == 'rve'):
 
                     registerVehicle(requestID, clientAddress)
+
+                elif (requestName == 'usa'):
+
+                    updateStationAddress(requestID, clientAddress, requestParameters)
+
+                elif (requestName == 'fcs'):
+
+                    freeChargingStation(requestID, clientAddress, requestParameters)
 
             #Caso contrario, manda a resposta novamente
             else:
