@@ -29,6 +29,12 @@ threadList = []
 #ID Aleatorio inicial
 randomID = "*"
 
+#Variavel de execucao do programa
+isExecuting = True
+
+#Variavel de contagem de fechamentos dos threads
+threadCount = 1
+
 #Funcao para obter um novo ID aleatorio
 def getRandomID():
 
@@ -79,7 +85,7 @@ def listenToRequest(timeout):
     add = ""
 
     receiverSocketLock.acquire()
-    
+
     #Cria o soquete, torna a conexao reciclavel, reserva a porta local 8001 para a conexao e liga o modo de escuta        
     socket_receiver = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     socket_receiver.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -160,7 +166,6 @@ def sendResponse(clientAddress, response):
 
     senderSocketLock.release()
 
-
 #Funcao para fazer entrada de requisicao processada
 def registerRequestResult(clientAddress, requestID, requestResult):
     
@@ -170,16 +175,17 @@ def registerRequestResult(clientAddress, requestID, requestResult):
     requestTable = {}
     requestTable["ID"] = requestID
     requestTable["result"] = requestResult
-
+    
     #Obtem a string de endereco do cliente
     clientAddressString, _ = clientAddress
-
+    
     #Concatena o nome do arquivo para a entrada da requisicao
     requestFileName = (clientAddressString.strip('.') + ".json")
-
+    
     fileLock.acquire()
+    
     #Cria uma entrada referente a requisicao e ao resultado obtido
-    createFile(["clientdata", "requests", requestFileName], requestTable)
+    writeFile(["clientdata", "requests", requestFileName], requestTable)
     fileLock.release()
 
 
@@ -209,14 +215,14 @@ def registerChargeStation(requestID, stationAddress, requestParameters):
             stationInfo["coord_y"] = requestParameters[2]
             stationInfo["unitary_price"] = requestParameters[3]
             stationInfo["actual_vehicle"] = ""
-            stationInfo["station_address"] = stationAddress
+            stationInfo["remaining_charge"] = "0"
             
             #Concatena o nome do arquivo/
             fileName = (randomID + ".json")
 
             fileLock.acquire()
             #Grava as informacoes em arquivo de texto
-            createFile(["clientdata", "clients", "stations", fileName], stationInfo)
+            writeFile(["clientdata", "clients", "stations", fileName], stationInfo)
             fileLock.release()
             
             #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
@@ -274,7 +280,7 @@ def registerVehicle(requestID, vehicleAddress):
     fileLock.acquire()
 
     #Cria um novo arquivo para o veiculo
-    createFile(["clientdata", "clients", "vehicles", vehicleFileName], dataTable)
+    writeFile(["clientdata", "clients", "vehicles", vehicleFileName], dataTable)
 
     fileLock.release()
 
@@ -286,11 +292,10 @@ def registerVehicle(requestID, vehicleAddress):
     #Responde o status da requisicao para o cliente
     sendResponse(vehicleAddress, vehicleRandomID)
 
-#Funcao para atualizar o endereco da estacao de carga
-def updateStationAddress(requestID, stationAddress, requestParameters):
+#Funcao para verificar o veiculo atualmente reservado em determinada estacao de carga
+def getBookedVehicle(requestID, stationAddress, requestParameters):
     
     global fileLock
-    global randomID
 
     #Caso os parametros da requisicao sejam do tamanho adequado...
     if (len(requestParameters) >= 1):
@@ -301,42 +306,39 @@ def updateStationAddress(requestID, stationAddress, requestParameters):
         #Concatena o nome do arquivo/
         fileName = (stationID + ".json")
 
+        #Verifica se existe a estacao de carga com o ID fornecido (por meio de verificacao do arquivo de nome exato)
         fileLock.acquire()
+        stationVerify = verifyFile(["clientdata", "clients", "stations"], fileName)
+        fileLock.release()
 
-        #Caso o ID da estacao fornecido seja igual ao ID aleatorio atual esperado
-        if (verifyFile(["clientdata", "clients", "stations"], fileName) == True):
+        if(stationVerify == True):
 
+            fileLock.acquire()
             #Recupera informacoes da estacao de carga
             stationInfo = readFile(["clientdata", "clients", "stations", fileName])
-
-            stationInfo["station_address"] = stationAddress
-
-            #Grava as informacoes em arquivo de texto
-            createFile(["clientdata", "clients", "stations", fileName], stationInfo)
-
             fileLock.release()
+
+            bookedVehicle = stationInfo["actual_vehicle"]
+            remainingCharge = stationInfo["remaining_charge"]
             
             #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
-            registerRequestResult(stationAddress, requestID, 'OK')
-
+            registerRequestResult(stationAddress, requestID, [bookedVehicle, remainingCharge])
+            
             #Responde o status da requisicao para o cliente
-            sendResponse(stationAddress, 'OK')
-
+            sendResponse(stationAddress, [bookedVehicle, remainingCharge])
+            
         else:
-
-            fileLock.release()
-
+            
             #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
-            registerRequestResult(stationAddress, requestID, 'NF')
-
+            registerRequestResult(stationAddress, requestID, ['NF',""])
+            
             #Responde o status da requisicao para o cliente
-            sendResponse(stationAddress, 'NF')
+            sendResponse(stationAddress, ['NF',""])
 
 #Funcao para liberar estacao de carga
 def freeChargingStation(requestID, stationAddress, requestParameters):
     
     global fileLock
-    global randomID
 
     #Caso os parametros da requisicao sejam do tamanho adequado...
     if (len(requestParameters) >= 1):
@@ -349,18 +351,19 @@ def freeChargingStation(requestID, stationAddress, requestParameters):
 
         fileLock.acquire()
 
+        stationVerify = verifyFile(["clientdata", "clients", "stations"], fileName)
+
         #Caso o ID da estacao fornecido seja igual ao ID aleatorio atual esperado
-        if (verifyFile(["clientdata", "clients", "stations"], fileName) == True):
+        if (stationVerify == True):
 
             #Recupera informacoes da estacao de carga
             stationInfo = readFile(["clientdata", "clients", "stations", fileName])
 
             stationInfo["actual_vehicle"] = ""
+            stationInfo["remaining_charge"] = "0"
 
             #Grava as informacoes em arquivo de texto
-            createFile(["clientdata", "clients", "stations", fileName], stationInfo)
-
-            fileLock.release()
+            writeFile(["clientdata", "clients", "stations", fileName], stationInfo)
             
             #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
             registerRequestResult(stationAddress, requestID, 'OK')
@@ -368,15 +371,24 @@ def freeChargingStation(requestID, stationAddress, requestParameters):
             #Responde o status da requisicao para o cliente
             sendResponse(stationAddress, 'OK')
 
+        fileLock.release()
+
+        if(stationVerify == True):
+            
+            #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
+            registerRequestResult(stationAddress, requestID, 'OK')
+            
+            #Responde o status da requisicao para o cliente
+            sendResponse(stationAddress, 'OK')
+            
         else:
-
-            fileLock.release()
-
+            
             #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
             registerRequestResult(stationAddress, requestID, 'NF')
-
+            
             #Responde o status da requisicao para o cliente
             sendResponse(stationAddress, 'NF')
+            
 
 #Funcao para retornar a distancia ate o posto de recarga mais proximo e seu ID
 def respondWithDistance(requestID, vehicleAddress, requestParameters):
@@ -475,12 +487,15 @@ def attemptCharge(requestID, vehicleAddress, requestParameters):
                 #Nome do arquivo da compra
                 purchaseFileName = (purchaseID + ".json")
 
+                chargeAmount = str((float(paidAmmount))/float(stationInfo["unitary_price"]))
+
                 #Cria um dicionario das informacoes da compra, adiciona informacoes e grava um arquivo
                 purchaseTable = {}
                 purchaseTable["vehicle_ID"] = vehicleID
                 purchaseTable["station_ID"] = stationID
                 purchaseTable["total"] = paidAmmount
                 purchaseTable["unitary_price"] = stationInfo["unitary_price"]
+                purchaseTable["charge_amount"] = chargeAmount
 
                 #Carrega o dicionario de informacoes do veiculo, Adiciona a compra a lista de compras do veiculo (cliente) e grava o resultado
                 vehicleInfo = readFile(["clientdata", "clients", "vehicles", vehicleFileName])
@@ -488,11 +503,12 @@ def attemptCharge(requestID, vehicleAddress, requestParameters):
 
                 #Modifica o veiculo atual na estacao de carga e grava o resultado
                 stationInfo["actual_vehicle"] = vehicleID
+                stationInfo["remaining_charge"] = chargeAmount
 
                 #Grava o resultado das acoes
-                createFile(["clientdata", "purchases", purchaseFileName])
-                createFile(["clientdata", "clients", "vehicles", vehicleFileName], vehicleInfo)
-                createFile(["clientdata", "clients", "stations", stationFileName], stationInfo)
+                writeFile(["clientdata", "purchases", purchaseFileName], purchaseTable)
+                writeFile(["clientdata", "clients", "vehicles", vehicleFileName], vehicleInfo)
+                writeFile(["clientdata", "clients", "stations", stationFileName], stationInfo)
 
                 #Marca a compra como feita
                 purchaseDone = True
@@ -504,21 +520,6 @@ def attemptCharge(requestID, vehicleAddress, requestParameters):
 
                 #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
                 registerRequestResult(vehicleAddress, requestID, 'OK')
-
-                #Envia mensagem a estacao de carga
-                sendResponse(stationInfo["station_address"], vehicleID)
-
-                #Espera resposta da estacao de carga
-                (_, response) = listenToRequest(5)
-
-                #Enquanto nao for o esperado
-                while (response != "OK"):
-
-                    #Envia mensagem a estacao de carga
-                    sendResponse(stationInfo["station_address"], vehicleID)
-
-                    #Espera resposta da estacao de carga
-                    (_, response) = listenToRequest(5)
                 
                 #Envia mensagem de resposta ao veiculo
                 sendResponse(vehicleAddress, 'OK')
@@ -553,20 +554,22 @@ def attemptCharge(requestID, vehicleAddress, requestParameters):
 #Funcao para cada thread que espera uma requisicao
 def requestCatcher():
 
+    global isExecuting
+    global threadCount
+
     #Loop da thread
-    while True:
+    while (isExecuting == True):
 
         #Espera chegar uma requisicao
         clientAddress, requestInfo = listenToRequest(5)
 
         #Se o tamamanho da lista de requisicao for adequado
-        if (len(requestInfo) >= 4):
+        if (len(requestInfo) >= 3):
             
             #Recupera as informacoes da lista de requisicao
-            clientID = requestInfo[0]
-            requestID = requestInfo[1]
-            requestName = requestInfo[2]
-            requestParameters = requestInfo[3]
+            requestID = requestInfo[0]
+            requestName = requestInfo[1]
+            requestParameters = requestInfo[2]
 
             #Obtem a string de endereco do cliente
             clientAddressString, _ = clientAddress
@@ -616,9 +619,9 @@ def requestCatcher():
 
                     registerVehicle(requestID, clientAddress)
 
-                elif (requestName == 'usa'):
+                elif (requestName == 'gbv'):
 
-                    updateStationAddress(requestID, clientAddress, requestParameters)
+                    getBookedVehicle(requestID, clientAddress, requestParameters)
 
                 elif (requestName == 'fcs'):
 
@@ -634,6 +637,10 @@ def requestCatcher():
             
             #Response que a requisicao e invalida
             sendResponse(clientAddress, 'ERR')
+    
+    print("THREAD ENCERRADO (" + str(threadCount) + "/" + str(maxThreads) + ")")
+    threadCount += 1
+
 
 #Inicio do programa
 #Obtem um ID aleatorio de 24 elementos alfanumericos e exibe mensagem da operacao
@@ -648,10 +655,6 @@ for threadIndex in range(0, maxThreads):
     newThread.start()
     threadList.append(newThread)
 
-#Loop para percorrer a lista de threads
-for threadIndex in range(0, maxThreads):
-
-    actualThread = threadList[threadIndex]
-
-    #Marca o thread atual como parte da lista de threads que "seguram" a execucao do programa principal
-    actualThread.join()
+input("PRESSIONE ENTER PARA SAIR")
+print("AGUARDE O ENCERRAMENTO:")
+isExecuting = False

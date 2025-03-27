@@ -1,6 +1,7 @@
 #Importa bibliotecas basicas do python 3
 import json
 import socket
+import time
 
 #Importa as bibliotecas customizadas da aplicacao
 from lib.db import *
@@ -18,9 +19,39 @@ class Station():
         self.unitaryPrice = 0
         self.actualVehicleID = ""
         self.remainingCharge = 0
+    
+    #Funcao para enviar uma requisicao ao servidor
+    def sendRequest(self, serverName, request):
+
+        #Cria o soquete e torna a conexao reciclavel
+        socket_sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        socket_sender.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        socket_sender.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+
+        #Obtem o endereco do servidor com base em seu nome
+        SERVER = socket.gethostbyname(serverName)
+
+        #Serializa a requisicao utilizando json
+        serializedRequest = json.dumps(request)
+
+        print("--------------------------------------------")
+        print(serverName)
+        print(SERVER)
+        print(serializedRequest)
+        print("--------------------------------------------")
+        
+        try:
+            #Tenta fazer a conexao (endereco do servidor, porta 8001), envia a requisicao em formato "bytes", codec "UTF-8", pela conexao
+            socket_sender.connect((SERVER, 8001))
+            socket_sender.send(bytes(serializedRequest, 'UTF-8'))
+        except Exception as err:
+            print(err)
+
+        #Fecha a conexao (desfaz o soquete)
+        socket_sender.close()
 
     #Funcao para receber uma resposta de requisicao
-    def receiveFromServer(self, timeout):
+    def receiveResponse(self, timeout):
 
         #Cria o soquete, torna a conexao reciclavel, estabelece um timeout (10 segundos), reserva a porta local 8002 para a conexao e liga o modo de escuta
         socket_receiver = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -68,36 +99,6 @@ class Station():
         #Retorna atributos de uma mensagem nao-recebida ou vazia
         return (add, "")
     
-    #Funcao para enviar uma requisicao ao servidor
-    def sendToServer(self, serverName, request):
-
-        #Cria o soquete e torna a conexao reciclavel
-        socket_sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        socket_sender.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        socket_sender.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-
-        #Obtem o endereco do servidor com base em seu nome
-        SERVER = socket.gethostbyname(serverName)
-
-        #Serializa a requisicao utilizando json
-        serializedRequest = json.dumps(request)
-
-        print("--------------------------------------------")
-        print(serverName)
-        print(SERVER)
-        print(serializedRequest)
-        print("--------------------------------------------")
-        
-        try:
-            #Tenta fazer a conexao (endereco do servidor, porta 8001), envia a requisicao em formato "bytes", codec "UTF-8", pela conexao
-            socket_sender.connect((SERVER, 8001))
-            socket_sender.send(bytes(serializedRequest, 'UTF-8'))
-        except Exception as err:
-            print(err)
-
-        #Fecha a conexao (desfaz o soquete)
-        socket_sender.close()
-    
     #Funcao para registrar a estacao
     def registerStation(self, coord_x, coord_y, unitary_price):
 
@@ -110,14 +111,14 @@ class Station():
         requestParameters = [stationID, coord_x, coord_y, unitary_price]
 
         #Formula o conteudo da requisicao a ser enviada
-        #O conteudo e uma lista de ao menos 4 elementos (ID de quem requeriu, ID da requisicao, nome da requisicao e parametros da mesma)
-        requestContent = ['', requestID, 'rcs', requestParameters]
+        #O conteudo e uma lista de ao menos 3 elementos (ID da requisicao, nome da requisicao e parametros da mesma)
+        requestContent = [requestID, 'rcs', requestParameters]
         
         #Envia a requisicao para o servidor da aplicacao
-        self.sendToServer('charge_server', requestContent)
+        self.sendRequest('charge_server', requestContent)
 
         #Espera a resposta
-        (_, response) = self.receiveFromServer(10)
+        (_, response) = self.receiveResponse(10)
 
         #Se a resposta nao for adequada ("OK")...
         while (response != "OK"):
@@ -129,14 +130,14 @@ class Station():
             requestParameters = [stationID, coord_x, coord_y, unitary_price]
 
             #Formula o conteudo da requisicao a ser enviada
-            #O conteudo e uma lista de ao menos 4 elementos (ID de quem requeriu, ID da requisicao, nome da requisicao e parametros da mesma)
-            requestContent = ['', requestID, 'rcs', requestParameters]
+            #O conteudo e uma lista de ao menos 3 elementos (ID da requisicao, nome da requisicao e parametros da mesma)
+            requestContent = [requestID, 'rcs', requestParameters]
             
             #Envia a requisicao para o servidor da aplicacao
-            self.sendToServer('charge_server', requestContent)
+            self.sendRequest('charge_server', requestContent)
 
             #Espera a resposta
-            (_, response) = self.receiveFromServer(10)
+            (_, response) = self.receiveResponse(10)
 
             #Muda o ID da requisicao (para controle por parte do servidor do que ja foi executado)
             if (int(requestID) < 63):
@@ -153,38 +154,36 @@ class Station():
         #Retorna a resposta (ID da estacao)
         return stationID
     
-    def updateStationAddress(self):
+    def getBookedVehicle(self):
 
         global requestID
 
         #Formula o conteudo da requisicao a ser enviada
-        #O conteudo e uma lista de ao menos 4 elementos (ID de quem requeriu, ID da requisicao, nome da requisicao e parametros da mesma)
-        requestContent = ['', requestID, 'usa', [self.ID]]
+        #O conteudo e uma lista de ao menos 3 elementos (ID da requisicao, nome da requisicao e parametros da mesma)
+        requestContent = [requestID, 'gbv', [self.ID]]
         
         #Envia a requisicao para o servidor da aplicacao
-        self.sendToServer('charge_server', requestContent)
+        self.sendRequest('charge_server', requestContent)
 
         #Espera a resposta
-        (_, response) = self.receiveFromServer(10)
+        (_, response) = self.receiveResponse(10)
 
-        #Se a resposta nao for adequada ("OK" ou "NF")...
-        while (response != "OK" and response != "NF"):
-            
-            #Formula o conteudo da requisicao a ser enviada
-            #O conteudo e uma lista de ao menos 4 elementos (ID de quem requeriu, ID da requisicao, nome da requisicao e parametros da mesma)
-            requestContent = ['', requestID, 'usa', [self.ID]]
+        #Se a resposta nao for adequada...
+        while (response == ""):
             
             #Envia a requisicao para o servidor da aplicacao
-            self.sendToServer('charge_server', requestContent)
+            self.sendRequest('charge_server', requestContent)
 
             #Espera a resposta
-            (_, response) = self.receiveFromServer(10)
+            (_, response) = self.receiveResponse(10)
 
         #Muda o ID da requisicao (para controle por parte do servidor do que ja foi executado)
         if (int(requestID) < 63):
             requestID = str(int(requestID) + 1)
         else:
             requestID = "1"
+
+        return response
 
     def chargeSequence(self):
 
@@ -205,26 +204,22 @@ class Station():
 
         #Formula o conteudo da requisicao a ser enviada
         #O conteudo e uma lista de ao menos 4 elementos (ID de quem requeriu, ID da requisicao, nome da requisicao e parametros da mesma)
-        requestContent = ['', requestID, 'fcs', [self.ID]]
+        requestContent = [requestID, 'fcs', [self.ID]]
         
         #Envia a requisicao para o servidor da aplicacao
-        self.sendToServer('charge_server', requestContent)
+        self.sendRequest('charge_server', requestContent)
 
         #Espera a resposta
-        (_, response) = self.receiveFromServer(10)
+        (_, response) = self.receiveResponse(10)
 
         #Se a resposta nao for adequada ("OK" ou "NF")...
         while (response != "OK" and response != "NF"):
             
-            #Formula o conteudo da requisicao a ser enviada
-            #O conteudo e uma lista de ao menos 4 elementos (ID de quem requeriu, ID da requisicao, nome da requisicao e parametros da mesma)
-            requestContent = ['', requestID, 'fcs', [self.ID]]
-            
             #Envia a requisicao para o servidor da aplicacao
-            self.sendToServer('charge_server', requestContent)
+            self.sendRequest('charge_server', requestContent)
 
             #Espera a resposta
-            (_, response) = self.receiveFromServer(10)
+            (_, response) = self.receiveResponse(10)
 
         #Muda o ID da requisicao (para controle por parte do servidor do que ja foi executado)
         if (int(requestID) < 63):
@@ -254,7 +249,7 @@ if (verifyFile(["stationdata"], "station_data.json") == False):
     dataTable["remaining_charge"] = ""
 
     #E tambem cria o arquivo e preenche com as informacoes contidas no dicionario acima
-    createFile(["stationdata", "station_data.json"], dataTable)
+    writeFile(["stationdata", "station_data.json"], dataTable)
 
 #Caso contrario
 else:
@@ -270,14 +265,7 @@ if (verifyFile(["stationdata"], "ID.txt") == False):
     stationID = station.registerStation(dataTable["coord_x"], dataTable["coord_y"], dataTable["unitary_price"])
     
     #Cria um novo arquivo
-    createFile(["stationdata", "ID.txt"], stationID)
-
-#Caso contrario, executa atualizacao de endereco
-else:
-
-    #Carrega as informacoes gravadas (ID)
-    station.ID = readFile(["stationdata", "ID.txt"])
-    station.updateStationAddress()
+    writeFile(["stationdata", "ID.txt"], stationID)
 
 #Carrega as informacoes gravadas (ID)
 station.ID = readFile(["stationdata", "ID.txt"])
@@ -303,7 +291,6 @@ while True:
     loadedTable = readFile(["stationdata", "station_data.json"])
 
     #Modifica as informacoes do objeto da estacao
-    station.unitaryPrice = float(loadedTable["unitary_price"])
     station.actualVehicleID = loadedTable["actual_vehicle"]
     station.remainingCharge = loadedTable["remaining_charge"]
 
@@ -312,24 +299,20 @@ while True:
 
         station.chargeSequence()
 
-    #Espera chegar uma requisicao
-    serverAddress, resquestInfo = station.receiveFromServer(0)
+    #Verifica se tem veiculo com carga pendente
+    bookedVehicleInfo = station.getBookedVehicle()
 
-    #Obtem a string do endereco do servidor
-    serverAddressString, _ = serverAddress
-
-    #Caso o endereco seja de fato do servidor e seja recebido um ID e quantidade de carga
-    if ((serverAddressString.equals(socket.gethostbyname('charge_server')) == True) and (len(resquestInfo) >= 2)) :
+    #Caso o tamanho da lista seja maior ou a igual a 2
+    if (bookedVehicleInfo[0] != ""):
         
-        #Caso nao exista operacao de carga em andamento
-        if (loadedTable["actual_vehicle"] == ""):
-            
-            #Inicia nova operacao de carga
-            loadedTable["actual_vehicle"] = resquestInfo[0]
-            loadedTable["remaining_charge"] = str((float(resquestInfo[1]))/station.unitaryPrice)
+        #Atualiza informacoes no dicionario
+        loadedTable["actual_vehicle"] = bookedVehicleInfo[0]
+        loadedTable["remaining_charge"] = bookedVehicleInfo[1]
+        
+        #Grava as informacoes atualizadas
+        writeFile(["stationdata", "station_data.json"], loadedTable)
 
-        #Sinaliza ao servidor que recebeu a mensagem
-        station.sendToServer('charge_server', 'OK')
+    #Caso contrario, espera um minuto antes de fazer qualquer outra coisa
+    else:
 
-    #Grava as informacoes atualizadas
-    createFile(["clientdata", "station_data.json"], loadedTable)
+        time.sleep(60)
