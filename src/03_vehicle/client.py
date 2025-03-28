@@ -6,6 +6,9 @@ import socket
 from lib.db import *
 from lib.io import *
 
+#modulo para geração de ID
+import uuid
+
 #Classe do usuario
 class User():
     
@@ -165,8 +168,24 @@ class User():
 
         return response
         
-    def pay(self): #metodo que envia a solicitacao de pagamento ao servidor, recebe a confirmação e atualiza payment_history 
-        return
+    def pay(self,paidAmount, requestID): #metodo que envia a solicitacao de pagamento ao servidor, recebe a confirmação e atualiza payment_history 
+        purchaseID = str(uuid.UUID.int)
+        requestParameters = [purchaseID,self.ID,'',paidAmount]
+        
+        requestContent = [requestID,'rvp',requestParameters]
+        self.sendRequest('charge_server',requestContent)
+        (add,response) = self.listenToResponse()
+
+        while (len(response) != 1):
+            self.sendRequest('charge_server',requestContent)
+            (add,response) = self.listenToResponse()
+        
+        if (int(requestID) < 63):
+            requestID = str(int(requestID) + 1)
+        else:
+            requestID = "0"
+
+        return response
     
     def paymentCheck(self): #visualiza payment_history
         print(self.payment_history)
