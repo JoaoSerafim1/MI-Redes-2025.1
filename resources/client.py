@@ -169,7 +169,7 @@ class User():
         purchaseID = str(uuid.UUID.int)
         requestParameters = [purchaseID,self.ID,'',paidAmount]
         
-        requestContent = ['',requestID,'rvp',requestParameters]
+        requestContent = [requestID,'rvp',requestParameters]
         self.sendRequest('charge_server',requestContent)
         (add,response) = self.listenToResponse()
 
