@@ -626,7 +626,10 @@ def requestCatcher():
                 elif (requestName == 'fcs'):
 
                     freeChargingStation(requestID, clientAddress, requestParameters)
-
+                
+                elif (requestName == 'rvp'):
+                    
+                    attemptCharge(requestID, clientAddress, requestParameters)
             #Caso contrario, manda a resposta novamente
             else:
 
