@@ -5,7 +5,7 @@ RUN apt-get update -y
 # Install Tkinter
 RUN apt-get install tk -y && \
     apt-get install -y python3-pip
-# Instalar o CustomTkinter
+# Install CustomTkinter
 RUN pip install customtkinter
 EXPOSE 8001
 EXPOSE 8002
