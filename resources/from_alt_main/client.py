@@ -4,6 +4,11 @@ import socket
 
 #Importa as bibliotecas customizadas da aplicacao
 from lib.db import *
+from lib.io import *
+
+#modulo para geração de ID
+import uuid
+#Importa customTkinter
 import customtkinter as ctk 
 #Classe do usuario
 class User():
@@ -100,7 +105,7 @@ class User():
         
         #Formula o conteudo da requisicao a ser enviada
         #O conteudo e uma lista de ao menos 4 elementos (ID de quem requeriu, ID da requisicao, nome da requisicao e parametros da mesma)
-        requestContent = ['', requestID, 'rve', '']
+        requestContent = [requestID, 'rve', '']
         
         #Envia a requisicao para o servidor da aplicacao
         self.sendRequest('charge_server', requestContent)
@@ -110,8 +115,10 @@ class User():
 
         #Se a resposta nao for adequada (string de 24 caracteres alfanumericos)...
         while (len(response) != 24):
+            
             #Envia novamente a requisicao e espera a resposta
             self.sendRequest('charge_server', requestContent)
+
             (add, response) = self.listenToResponse()
 
         #Muda o ID da requisicao (para controle por parte do servidor do que ja foi executado)
@@ -129,8 +136,8 @@ class User():
         return 0
     
     def bookChargeSpot(self, requestID): #reserva posto
-        bookButton.config(text='teste')
-        requestContent = ['', requestID, 'bcs', '']
+
+        requestContent = [requestID, 'bcs', '']
         self.sendRequest('charge_server', requestContent)
         (add, response) = self.listenToResponse()
 
@@ -147,7 +154,7 @@ class User():
     
     def nearestSpotRequest(self, requestID): #solicita distancia do posto mais proximo
         
-        requestContent = ['', requestID, 'nsr', '']
+        requestContent = [requestID, 'nsr', '']
         self.sendRequest('charge_server', requestContent)
         (add, response) = self.listenToResponse()
 
@@ -162,11 +169,27 @@ class User():
 
         return response
         
-    def pay(self): #metodo que envia a solicitacao de pagamento ao servidor, recebe a confirmação e atualiza payment_history 
+    def pay(self, requestID): #metodo que envia a solicitacao de pagamento ao servidor, recebe a confirmação e atualiza payment_history 
         payDialog = ctk.CTkInputDialog(text="Digite o valor a ser pago:", title="Pagamento")
-        payValue = payDialog.get_input()
-        print('pagou'+payValue)
-        return
+        paidAmount = payDialog.get_input()
+            
+        purchaseID = str(uuid.UUID.int)
+        requestParameters = [purchaseID,self.ID,'',paidAmount]
+        
+        requestContent = [requestID,'rvp',requestParameters]
+        self.sendRequest('charge_server',requestContent)
+        (add,response) = self.listenToResponse()
+
+        while (len(response) != 1):
+            self.sendRequest('charge_server',requestContent)
+            (add,response) = self.listenToResponse()
+        
+        if (int(requestID) < 63):
+            requestID = str(int(requestID) + 1)
+        else:
+            requestID = "0"
+
+        return response
     
     def paymentCheck(self): #visualiza payment_history
         print(self.payment_history)
@@ -178,26 +201,27 @@ vehicle = User()
 #Valores iniciais do programa
 requestID = "0"
 
+#Cria um dicionario dos atributos do veiculo
+dataTable = {}
+
+
 #Verifica se o arquivo de texto "ID.txt" esta presente, e caso nao esteja...
 if (verifyFile(["vehicledata"], "ID.txt") == False):
     
     #Cria um novo arquivo
-    createFile(["vehicledata", "ID.txt"], vehicle.registerVehicle(requestID))
+    writeFile(["vehicledata", "ID.txt"], vehicle.registerVehicle(requestID))
 
 #Verifica se o arquivo de texto "vehicle_data.json" esta presente, e caso nao esteja...
 if (verifyFile(["vehicledata"], "vehicle_data.json") == False):
     
-    #...cria um dicionario dos atributos do veiculo e preenche com valores iniciais
     #Valores dos pares chave-valor sao sempre string para evitar problemas com json
-    dataTable = {}
-    dataTable["user"] = "Fulano"
+    dataTable["capacity"] = str(enterNumber("Capacidade atual de carga do veiculo, em Wh: ", "ENTRADA INVALIDA."))
     dataTable["battery_level"] = "1.0"
-    dataTable["vehicle"] = "Byd"
-    dataTable["payment_method"] = ""
-    dataTable["payment_history"] = ""
+    dataTable["coord_x"] = "1.0"
+    dataTable["coord_y"] = "1.0"
 
     #E tambem cria o arquivo e preenche com as informacoes contidas no dicionario acima
-    createFile(["vehicledata", "vehicle_data.json"], dataTable)
+    writeFile(["vehicledata", "vehicle_data.json"], dataTable)
 
 #Carrega as informacoes gravadas (ID)
 vehicle.ID = readFile(["vehicledata", "ID.txt"])
@@ -218,7 +242,7 @@ frame = ctk.CTk()
 frame._set_appearance_mode('dark')
 frame.title('Cliente')
 frame.geometry('300x400')
-userInfo = ctk.CTkLabel(frame,text='fulano',fg_color='transparent')
+userInfo = ctk.CTkLabel(frame,text='fulano')
 userInfo.pack(pady=10)
 
 spotRequestButton = ctk.CTkButton(frame,text='Distância até posto de recarga',command=vehicle.nearestSpotRequest)
