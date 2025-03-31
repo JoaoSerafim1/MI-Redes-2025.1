@@ -94,6 +94,7 @@ IF %par1%==control (
 IF %par1%==import (
 
     docker container cp charge_server:/python_redes/01_server/clientdata ./files/imported/server
+    docker container cp charge_server:/python_redes/01_server/logs ./files/imported/server
     docker container cp charge_station_1:/python_redes/02_station/stationdata ./files/imported/station_1
     docker container cp charge_station_2:/python_redes/02_station/stationdata ./files/imported/station_2
     docker container cp charge_vehicle_1:/python_redes/03_vehicle/vehicledata ./files/imported/vehicle_1
@@ -105,6 +106,7 @@ IF %par1%==import (
 IF %par1%==export (
 
     docker container cp ./files/export/server/clientdata charge_server:/python_redes/01_server
+    docker container cp ./files/export/server/logs charge_server:/python_redes/01_server
     docker container cp ./files/export/station_1/stationdata charge_station_1:/python_redes/02_station
     docker container cp ./files/export/station_2/stationdata charge_station_2:/python_redes/02_station
     docker container cp ./files/export/vehicle_1/vehicledata charge_vehicle_1:/python_redes/03_vehicle

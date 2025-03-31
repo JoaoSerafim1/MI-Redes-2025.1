@@ -64,6 +64,22 @@ def writeFile(pathList, contentTable):
         #Joga o conteudo do dicionario no arquivo por meio de json
         json.dump(contentTable, file)
 
+#Funcao que cria um arquivo baseando em uma lista com o caminho dele e um dicionario do conteudo a ser adicionado 
+def appendFile(pathList, line):
+
+    #String do caminho a ser aberto, inicialmente vazia
+    pathString = ""
+
+    #Percorre a lista do caminho de forma a construir a string deste
+    for pathIndex in range(0, len(pathList)):
+        
+        pathString = os.path.join(pathString, pathList[pathIndex])
+
+    #Abre o arquivo em modo de escrita
+    with open(pathString, "a") as file:
+        
+        file.write(line)
+
 
 #Funcao que le um arquivo baseado em uma lista com o caminho dele
 def readFile(pathList):
