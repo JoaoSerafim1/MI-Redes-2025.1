@@ -3,6 +3,8 @@ import string
 import random
 import socket
 import json
+import time
+import datetime
 import threading
 
 #Importa as bibliotecas customizadas da aplicacao
@@ -34,6 +36,7 @@ isExecuting = True
 
 #Variavel de contagem de fechamentos dos threads
 threadCount = 1
+
 
 #Funcao para obter um novo ID aleatorio
 def getRandomID():
@@ -73,7 +76,7 @@ def getRandomID():
 
             #Retorna o novo ID aleatorio
             return newRandomID
-
+        
 
 #Funcao para receber uma requisicao
 def listenToRequest(timeout):
@@ -124,6 +127,12 @@ def listenToRequest(timeout):
         #De-serializa a mensagem decodificada 
         unserializedObj = json.loads(decodedBytes)
 
+        #Separa a parte do endereco referente ao endereco IP
+        addressString, _ = add
+
+        #Registra no log
+        registerLogEntry(["logs", "received"], "RVMSG", "ADDRESS", addressString)
+
         #Retorna o objeto da mensagem
         return (add, unserializedObj)
     
@@ -166,6 +175,7 @@ def sendResponse(clientAddress, response):
 
     senderSocketLock.release()
 
+
 #Funcao para fazer entrada de requisicao processada
 def registerRequestResult(clientAddress, requestID, requestResult):
     
@@ -186,6 +196,33 @@ def registerRequestResult(clientAddress, requestID, requestResult):
     
     #Cria uma entrada referente a requisicao e ao resultado obtido
     writeFile(["clientdata", "requests", requestFileName], requestTable)
+    
+    fileLock.release()
+
+#Funcao para registrar uma entrada no log
+def registerLogEntry(fileDir, entryLabel, logRequesterLabel, requester):
+    
+    #Acha a data local de hoje
+    localDate = str(datetime.date.today())
+
+    #Concatena o nome do arquivo e faz append com a lista do diretorio
+    logFileName = localDate + ".txt"
+    fileDir.append(logFileName)
+
+    #Acha o tempo preciso local do momento
+    localTimeStamp = str(datetime.datetime.now())
+
+    #Concatena a entrada que sera registrada no log
+    #Formato: [TIMESTAMP] NAME: nome-da-entrada ; ADDRESS/ID: 
+    logEntry = ("[" + localTimeStamp + "] NAME: " + entryLabel + " ; " + logRequesterLabel + ": " + requester +)
+
+    #Fecha lock
+    fileLock.acquire()
+
+    #Adiciona a entrada no arquivo
+    appendFile(fileDir, logEntry)
+
+    #Abre lock
     fileLock.release()
 
 
@@ -227,6 +264,9 @@ def registerChargeStation(requestID, stationAddress, requestParameters):
             
             #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
             registerRequestResult(stationAddress, requestID, 'OK')
+
+            #Registra no log
+            registerLogEntry(["logs", "performed"], "RGTSTATION", "S_ID", stationID)
 
             #Gera um novo ID aleatorio e exibe mensagem para conhecimento do mesmo
             randomID = getRandomID()
@@ -289,6 +329,9 @@ def registerVehicle(requestID, vehicleAddress):
     #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
     registerRequestResult(vehicleAddress, requestID, vehicleRandomID)
 
+    #Registra no log
+    registerLogEntry(["logs", "performed"], "RGTVEHICLE", "V_ID", vehicleRandomID)
+
     #Responde o status da requisicao para o cliente
     sendResponse(vehicleAddress, vehicleRandomID)
 
@@ -323,6 +366,9 @@ def getBookedVehicle(requestID, stationAddress, requestParameters):
             
             #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
             registerRequestResult(stationAddress, requestID, [bookedVehicle, remainingCharge])
+
+            #Registra no log
+            registerLogEntry(["logs", "performed"], "GETBOOKED", "S_ID", stationID)
             
             #Responde o status da requisicao para o cliente
             sendResponse(stationAddress, [bookedVehicle, remainingCharge])
@@ -364,12 +410,6 @@ def freeChargingStation(requestID, stationAddress, requestParameters):
 
             #Grava as informacoes em arquivo de texto
             writeFile(["clientdata", "clients", "stations", fileName], stationInfo)
-            
-            #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
-            registerRequestResult(stationAddress, requestID, 'OK')
-
-            #Responde o status da requisicao para o cliente
-            sendResponse(stationAddress, 'OK')
 
         fileLock.release()
 
@@ -377,6 +417,9 @@ def freeChargingStation(requestID, stationAddress, requestParameters):
             
             #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
             registerRequestResult(stationAddress, requestID, 'OK')
+
+            #Registra no log
+            registerLogEntry(["logs", "performed"], "FREESPOT", "S_ID", stationID)
             
             #Responde o status da requisicao para o cliente
             sendResponse(stationAddress, 'OK')
@@ -434,6 +477,12 @@ def respondWithDistance(requestID, vehicleAddress, requestParameters):
 
     #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
     registerRequestResult(vehicleAddress, requestID, [IDToReturn, str(distanceToReturn), unitaryPriceToReturn])
+
+    #Separa a string do endereco IP do veiculo
+    vehicleAddressString, _ = vehicleAddress
+
+    #Registra no log
+    registerLogEntry(["logs", "performed"], "GETDISTANCE", "V_ADD", vehicleAddressString)
 
     #Responde o status da requisicao para o cliente
     sendResponse(vehicleAddress, [IDToReturn, str(distanceToReturn), unitaryPriceToReturn])
@@ -520,6 +569,9 @@ def attemptCharge(requestID, vehicleAddress, requestParameters):
 
                 #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
                 registerRequestResult(vehicleAddress, requestID, 'OK')
+
+                #Registra no log
+                registerLogEntry(["logs", "performed"], "PHCCHARGE", "P_ID", purchaseID)
                 
                 #Envia mensagem de resposta ao veiculo
                 sendResponse(vehicleAddress, 'OK')
@@ -646,6 +698,9 @@ def requestCatcher():
 
 
 #Inicio do programa
+
+print("PRESSIONE ENTER APOS A SEQUENCIA DE INICIALIZACAO PARA ENCERRAR A APLICACAO")
+
 #Obtem um ID aleatorio de 24 elementos alfanumericos e exibe mensagem da operacao
 randomID = getRandomID()
 print("ID para o proximo cadastro de estacao de carga: " + randomID)
@@ -658,6 +713,6 @@ for threadIndex in range(0, maxThreads):
     newThread.start()
     threadList.append(newThread)
 
-input("PRESSIONE ENTER PARA SAIR")
+input()
 print("AGUARDE O ENCERRAMENTO:")
 isExecuting = False
