@@ -3,8 +3,8 @@ import string
 import random
 import socket
 import json
-import time
 import datetime
+import time
 import threading
 
 #Importa as bibliotecas customizadas da aplicacao
@@ -214,7 +214,7 @@ def registerLogEntry(fileDir, entryLabel, logRequesterLabel, requester):
 
     #Concatena a entrada que sera registrada no log
     #Formato: [TIMESTAMP] NAME: nome-da-entrada ; ADDRESS/ID: 
-    logEntry = ("[" + localTimeStamp + "] NAME: " + entryLabel + " ; " + logRequesterLabel + ": " + requester +)
+    logEntry = ("[" + localTimeStamp + "] NAME: " + entryLabel + " ; " + logRequesterLabel + ": " + requester + "\n")
 
     #Fecha lock
     fileLock.acquire()
@@ -246,13 +246,14 @@ def registerChargeStation(requestID, stationAddress, requestParameters):
         #Caso o ID da estacao fornecido seja igual ao ID aleatorio atual esperado
         if (stationID == randomID):
 
-            #Cria o dicionario das informacoes e preenche com as informacoes passadas como parametros da requisicao
+            #Cria o dicionario das informacoes e preenche com as informacoes passadas como parametros da requisicao e com o tempo atual desde do EPOCH
             stationInfo = {}
             stationInfo["coord_x"] = requestParameters[1]
             stationInfo["coord_y"] = requestParameters[2]
             stationInfo["unitary_price"] = requestParameters[3]
             stationInfo["actual_vehicle"] = ""
             stationInfo["remaining_charge"] = "0"
+            stationInfo["last_online"] = str(time.time())
             
             #Concatena o nome do arquivo/
             fileName = (randomID + ".json")
@@ -354,11 +355,23 @@ def getBookedVehicle(requestID, stationAddress, requestParameters):
         stationVerify = verifyFile(["clientdata", "clients", "stations"], fileName)
         fileLock.release()
 
+        #Caso o ID da estacao seja valido
         if(stationVerify == True):
 
+            #Obtem o tempo atual, para marcar como online
+            lastOnline = str(time.time())
+
             fileLock.acquire()
+
             #Recupera informacoes da estacao de carga
             stationInfo = readFile(["clientdata", "clients", "stations", fileName])
+            
+            #Insere a informacao de ultimo momento online
+            stationInfo["last_online"] = lastOnline
+            
+            #Grava a informacao atualizada (controle de estacoes online)
+            writeFile(["clientdata", "clients", "stations", fileName], stationInfo)
+            
             fileLock.release()
 
             bookedVehicle = stationInfo["actual_vehicle"]
@@ -397,14 +410,17 @@ def freeChargingStation(requestID, stationAddress, requestParameters):
 
         fileLock.acquire()
 
+        #Verifica se existe estacao com o ID fornecido
         stationVerify = verifyFile(["clientdata", "clients", "stations"], fileName)
 
-        #Caso o ID da estacao fornecido seja igual ao ID aleatorio atual esperado
+        #Caso o ID da estacao fornecido seja valido
         if (stationVerify == True):
-
+            
             #Recupera informacoes da estacao de carga
             stationInfo = readFile(["clientdata", "clients", "stations", fileName])
 
+            #Insere as novas informacoes
+            stationInfo["last_online"] = str(time.time())
             stationInfo["actual_vehicle"] = ""
             stationInfo["remaining_charge"] = "0"
 
@@ -465,8 +481,16 @@ def respondWithDistance(requestID, vehicleAddress, requestParameters):
         #Calcula a distancia
         actualDistance = getDistance(requestParameters[0], requestParameters[1], float(actualStationTable["coord_x"]), float(actualStationTable["coord_y"]))
 
+        isOnline = False
+
+        #Verifica se a ultima vez online foi a menos de 2 minutos e 15 segundos
+        if(((int(time.time())) - (int(actualStationTable["last_online"]))) < 135):
+
+            #Esta online
+            isOnline = True
+
         #Se a estacao estiver disponivel e se estivermos no primeiro indice da lista ou se a nova menor distancia for menor que a ultima
-        if ((actualStationTable["actual_vehicle"]) and ((stationIndex == 0) or (actualDistance < distanceToReturn))):
+        if ((isOnline == True)(actualStationTable["actual_vehicle"] == "") and ((stationIndex == 0) or (actualDistance < distanceToReturn))):
             
             #Atualiza os valores a serem retornados (achou distancia menor)
             distanceToReturn = actualDistance
