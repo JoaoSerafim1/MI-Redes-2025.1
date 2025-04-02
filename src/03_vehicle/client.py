@@ -8,7 +8,8 @@ from lib.io import *
 
 #modulo para geração de ID
 import uuid
-
+#Importa customTkinter
+import customtkinter as ctk 
 #Classe do usuario
 class User():
     
@@ -20,7 +21,6 @@ class User():
         self.user = ""
         self.battery_level = ""
         self.vehicle = ""
-        self.payment_method = ""
         self.payment_history = {}
     
     #Funcao para enviar uma requisicao ao servidor
@@ -153,7 +153,10 @@ class User():
     
     def nearestSpotRequest(self, requestID): #solicita distancia do posto mais proximo
         
-        requestContent = [requestID, 'nsr', '']
+        localDataTable = readFile(["vehicledata", "vehicle_data.json"])
+        
+        requestParameters = [localDataTable["coord_x"],localDataTable["coord_y"]]
+        requestContent = [requestID, 'nsr', requestParameters]
         self.sendRequest('charge_server', requestContent)
         (add, response) = self.listenToResponse()
 
@@ -168,7 +171,10 @@ class User():
 
         return response
         
-    def pay(self,paidAmount, requestID): #metodo que envia a solicitacao de pagamento ao servidor, recebe a confirmação e atualiza payment_history 
+    def pay(self,requestID): #metodo que envia a solicitacao de pagamento ao servidor, recebe a confirmação e atualiza payment_history 
+        payDialog = ctk.CTkInputDialog(text="Digite o valor a ser pago:", title="Pagamento")
+        paidAmount = payDialog.get_input()
+        print('pagou'+paidAmount)
         purchaseID = str(uuid.UUID.int)
         requestParameters = [purchaseID,self.ID,'',paidAmount]
         
@@ -233,3 +239,26 @@ print("*********************************************")
 print(vehicle.ID)
 print(vehicle.battery_level)
 print("*********************************************")
+
+
+frame = ctk.CTk()
+frame._set_appearance_mode('dark')
+frame.title('Cliente')
+frame.geometry('400x600')
+
+userInfo = ctk.CTkLabel(frame,text='fulano')
+userInfo.pack(pady=10)
+
+spotRequestButton = ctk.CTkButton(frame,text='Distância até posto de recarga',command=lambda:vehicle.nearestSpotRequest(requestID))
+spotRequestButton.pack(pady=10)
+
+bookButton = ctk.CTkButton(frame,text='reservar posto',command=lambda:vehicle.bookChargeSpot(requestID))
+bookButton.pack(pady=10)
+
+payButton = ctk.CTkButton(frame,text='Pagar',command=lambda:vehicle.pay(requestID))
+payButton.pack(pady=10)
+
+spotDistanceInfo = ctk.CTkLabel(frame,text="")
+spotDistanceInfo.pack(pady=5)
+
+frame.mainloop()

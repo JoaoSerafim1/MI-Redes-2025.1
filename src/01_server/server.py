@@ -468,34 +468,40 @@ def respondWithDistance(requestID, vehicleAddress, requestParameters):
         
         #Nome 
         actualStationFileName = stationList[stationIndex]
-        actualID = ""
-        
-        #Acha o ID da estacao a retornar
-        for IDIndex in range(0, 24):
 
-            actualID += actualStationFileName[IDIndex]
+        if (actualStationFileName != ".gitignore"):
 
-        #Carrega as informacoes da estacao atual
-        actualStationTable = readFile(["clientdata", "clients", "stations", actualStationFileName])
 
-        #Calcula a distancia
-        actualDistance = getDistance(requestParameters[0], requestParameters[1], float(actualStationTable["coord_x"]), float(actualStationTable["coord_y"]))
+            actualID = ""
 
-        isOnline = False
-
-        #Verifica se a ultima vez online foi a menos de 2 minutos e 15 segundos
-        if(((int(time.time())) - (int(actualStationTable["last_online"]))) < 135):
-
-            #Esta online
-            isOnline = True
-
-        #Se a estacao estiver disponivel e se estivermos no primeiro indice da lista ou se a nova menor distancia for menor que a ultima
-        if ((isOnline == True)(actualStationTable["actual_vehicle"] == "") and ((stationIndex == 0) or (actualDistance < distanceToReturn))):
+            print(stationList)
             
-            #Atualiza os valores a serem retornados (achou distancia menor)
-            distanceToReturn = actualDistance
-            unitaryPriceToReturn = actualStationTable["unitary_price"]
-            IDToReturn = actualID
+            #Acha o ID da estacao a retornar
+            for IDIndex in range(0, 24):
+                    
+                actualID += actualStationFileName[IDIndex]
+
+            #Carrega as informacoes da estacao atual
+            actualStationTable = readFile(["clientdata", "clients", "stations", actualStationFileName])
+
+            #Calcula a distancia
+            actualDistance = getDistance(float(requestParameters[0]), float(requestParameters[1]), float(actualStationTable["coord_x"]), float(actualStationTable["coord_y"]))
+
+            isOnline = False
+
+            #Verifica se a ultima vez online foi a menos de 2 minutos e 15 segundos
+            if(((float(time.time())) - (float(actualStationTable["last_online"]))) < 135):
+
+                #Esta online
+                isOnline = True
+
+            #Se a estacao estiver disponivel e se estivermos no primeiro indice da lista ou se a nova menor distancia for menor que a ultima
+            if ((isOnline == True) and (actualStationTable["actual_vehicle"] == "") and ((stationIndex == 1) or (actualDistance < distanceToReturn))):
+                
+                #Atualiza os valores a serem retornados (achou distancia menor)
+                distanceToReturn = actualDistance
+                unitaryPriceToReturn = actualStationTable["unitary_price"]
+                IDToReturn = actualID
 
     fileLock.release()
 
@@ -706,6 +712,10 @@ def requestCatcher():
                 elif (requestName == 'rvp'):
                     
                     attemptCharge(requestID, clientAddress, requestParameters)
+                
+                elif (requestName == 'nsr'):
+
+                    respondWithDistance(requestID,clientAddress,requestParameters)
             #Caso contrario, manda a resposta novamente
             else:
 

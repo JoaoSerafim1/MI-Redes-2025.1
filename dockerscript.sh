@@ -25,12 +25,54 @@ if [ $1 = 'run' ]; then
     docker container remove -f charge_server
 
     docker run -d -it --network=dev_bridge --name=charge_server python-redes-image
-    docker run -d -it --network=dev_bridge --name=charge_station_1 python-redes-image
-    docker run -d -it --network=dev_bridge --name=charge_station_2 python-redes-image
-    docker run -d -it --network=dev_bridge --name=charge_vehicle_1 python-redes-image
-    docker run -d -it --network=dev_bridge --name=charge_vehicle_2 python-redes-image
-    docker run -d -it --network=dev_bridge --name=charge_vehicle_3 python-redes-image
-    docker run -d -it --network=dev_bridge --name=charge_vehicle_4 python-redes-image
+    docker run -d -it \
+        --network=dev_bridge \
+        --name=charge_station_1 \
+        -u=$(id -u $USER):$(id -g $USER) \
+        -e DISPLAY=$DISPLAY \
+        -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+        -v $(pwd)/app:/app \
+        python-redes-image
+    docker run -d -it \
+        --network=dev_bridge \
+        --name=charge_station_2 \
+        -u=$(id -u $USER):$(id -g $USER) \
+        -e DISPLAY=$DISPLAY \
+        -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+        -v $(pwd)/app:/app \
+        python-redes-image
+    docker run -d -it \
+        --network=dev_bridge \
+        --name=charge_vehicle_1 \
+        -u=$(id -u $USER):$(id -g $USER) \
+        -e DISPLAY=$DISPLAY \
+        -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+        -v $(pwd)/app:/app \
+        python-redes-image
+    docker run -d -it \
+        --network=dev_bridge \
+        --name=charge_vehicle_2 \
+        -u=$(id -u $USER):$(id -g $USER) \
+        -e DISPLAY=$DISPLAY \
+        -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+        -v $(pwd)/app:/app \
+        python-redes-image
+    docker run -d -it \
+        --network=dev_bridge \
+        --name=charge_vehicle_3 \
+        -u=$(id -u $USER):$(id -g $USER) \
+        -e DISPLAY=$DISPLAY \
+        -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+        -v $(pwd)/app:/app \
+        python-redes-image
+    docker run -d -it \
+        --network=dev_bridge \
+        --name=charge_vehicle_4 \
+        -u=$(id -u $USER):$(id -g $USER) \
+        -e DISPLAY=$DISPLAY \
+        -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+        -v $(pwd)/app:/app \
+        python-redes-image
 fi
 
 if [ $1 = 'stop' ]; then
