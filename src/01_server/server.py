@@ -633,6 +633,70 @@ def attemptCharge(requestID, vehicleAddress, requestParameters):
         #Responde o status da requisicao para o cliente
         sendResponse(vehicleAddress, 'ERR')
 
+#Funcao para retornar informacoes de uma compra em especifico
+def respondWithPurchase(requestID, vehicleAddress, requestParameters):
+
+    global fileLock
+
+    #Informacoes iniciais da mensagem de resposta
+    purchaseIDToReturn = "0"
+    totalToReturn = "0"
+    unitaryPriceToReturn = "0"
+    amountToReturn = "0"
+
+    #Se estiver no formato adequado
+    if(len(requestParameters) >= 2):
+        
+        #Le as informacoes nos parametros da requisicao e concatena o nome do arquivo do veiculo
+        vehicleFileName = (requestParameters[0] + ".json")
+        purchaseIndex = requestParameters[1]
+
+        fileLock.acquire()
+        #Verifica se existe veiculo com o ID especificado
+        verifyVehicle = verifyFile(["clientdata", "clients", "vehicles"], vehicleFileName)
+        fileLock.release()
+
+        if(verifyVehicle == True):
+
+            fileLock.acquire()
+            #Le o arquivo do veiculo com o ID especificado
+            vehicleInfo = readFile(["clientdata", "clients", "vehicles", vehicleFileName])
+            fileLock.release()
+
+            #Lista as compras feitas pelo veiculo
+            purchaseList = vehicleInfo["purchases"]
+            
+            #Verifica se existe compra no indice especificado da lista
+            if (len(purchaseList) > purchaseIndex):
+                
+                #Resgata o ID da compra e concatena o nome do arquivo da compra
+                purchaseID = purchaseList[purchaseIndex]
+                purchaseFileName = (purchaseID + ".json")
+
+                #Carrega o arquivo de compra
+                fileLock.acquire()
+                purchaseInfo = readFile(["clientdata", "purchases", purchaseFileName])
+                fileLock.release()
+                
+                #Atualiza informacoes da resposta de acordo com o que foi carregado
+                purchaseIDToReturn = purchaseID
+                totalToReturn = purchaseInfo["total"]
+                unitaryPriceToReturn = purchaseInfo["unitary_price"]
+                totalToReturn = purchaseInfo["charge_amount"]
+
+    #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
+    registerRequestResult(vehicleAddress, requestID, [purchaseIDToReturn, totalToReturn, unitaryPriceToReturn, amountToReturn])
+
+    #Separa a string do endereco IP do veiculo
+    vehicleAddressString, _ = vehicleAddress
+
+    #Registra no log
+    registerLogEntry(["logs", "performed"], "PCHDETAILS", "V_ADD", vehicleAddressString)
+
+    #Responde o status da requisicao para o cliente
+    sendResponse(vehicleAddress, [purchaseIDToReturn, totalToReturn, unitaryPriceToReturn, amountToReturn])
+    
+
 #Funcao para cada thread que espera uma requisicao
 def requestCatcher():
 
