@@ -41,6 +41,7 @@ threadCount = 1
 #Funcao para obter um novo ID aleatorio
 def getRandomID():
 
+    #Globais utilizadas
     global fileLock
     global randomID
 
@@ -61,12 +62,15 @@ def getRandomID():
         stationVerify = False
         vehicleVerify = False
 
+        #Verifica se o ID aleatorio ja tem registro em estacoes (raro, mas pode acontecer)
         fileLock.acquire()
         stationVerify = verifyFile(["clientdata", "clients", "stations"], completeFileName)
         fileLock.release()
         
+        #Se for o caso
         if (stationVerify == False):
             
+            #Faz o mesmo processo para veiculos
             fileLock.acquire()
             vehicleVerify = verifyFile(["clientdata", "clients", "vehicles"], completeFileName)
             fileLock.release()
@@ -81,6 +85,7 @@ def getRandomID():
 #Funcao para receber uma requisicao
 def listenToRequest(timeout):
     
+    #Globais utilizadas
     global receiverSocketLock
 
     #Valores iniciais da mensagem de requisicao (mensagem vazia)
@@ -100,8 +105,8 @@ def listenToRequest(timeout):
     socket_receiver.bind((socket.gethostbyname(socket.gethostname()), 8001))
     socket_receiver.listen(2)
     
+    #Espera a mensagem pelo tempo estipulado no timeout
     try:
-        #Espera a mensagem pelo tempo estipulado no timeout
         conn, add = socket_receiver.accept()
         msg = conn.recv(1024)
     except:
@@ -142,6 +147,7 @@ def listenToRequest(timeout):
 #Funcao para enviar uma resposta de volta ao cliente
 def sendResponse(clientAddress, response):
 
+    #Globais utilizadas
     global senderSocketLock
 
     #Obtem a string do endereco do cliente
@@ -163,8 +169,8 @@ def sendResponse(clientAddress, response):
     socket_sender.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     socket_sender.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     
+    #Tenta fazer a conexao (endereco do cliente, porta 8002), envia a resposta em formato "bytes", codec "UTF-8", pela conexao
     try:
-        #Tenta fazer a conexao (endereco do cliente, porta 8002), envia a resposta em formato "bytes", codec "UTF-8", pela conexao
         socket_sender.connect((clientAddressString, 8002))
         socket_sender.send(bytes(serializedResponse, 'UTF-8'))
     except Exception as err:
@@ -179,6 +185,7 @@ def sendResponse(clientAddress, response):
 #Funcao para fazer entrada de requisicao processada
 def registerRequestResult(clientAddress, requestID, requestResult):
     
+    #Globais utilizadas
     global fileLock
 
     #Dicionario de propriedades da requisicao
@@ -192,11 +199,9 @@ def registerRequestResult(clientAddress, requestID, requestResult):
     #Concatena o nome do arquivo para a entrada da requisicao
     requestFileName = (clientAddressString.strip('.') + ".json")
     
-    fileLock.acquire()
-    
     #Cria uma entrada referente a requisicao e ao resultado obtido
+    fileLock.acquire()
     writeFile(["clientdata", "requests", requestFileName], requestTable)
-    
     fileLock.release()
 
 #Funcao para registrar uma entrada no log
@@ -215,20 +220,17 @@ def registerLogEntry(fileDir, entryLabel, logRequesterLabel, requester):
     #Concatena a entrada que sera registrada no log
     #Formato: [TIMESTAMP] NAME: nome-da-entrada ; ADDRESS/ID: 
     logEntry = ("[" + localTimeStamp + "] NAME: " + entryLabel + " ; " + logRequesterLabel + ": " + requester + "\n")
-
-    #Fecha lock
+    
+    #Adiciona a entrada no arquivo de log correspondente
     fileLock.acquire()
-
-    #Adiciona a entrada no arquivo
     appendFile(fileDir, logEntry)
-
-    #Abre lock
     fileLock.release()
 
 
 #Funcao para registrar uma estacao de recarga
 def registerChargeStation(requestID, stationAddress, requestParameters):
     
+    #Globais utilizadas
     global fileLock
     global randomIDLock
     global randomID
@@ -258,8 +260,8 @@ def registerChargeStation(requestID, stationAddress, requestParameters):
             #Concatena o nome do arquivo/
             fileName = (randomID + ".json")
 
-            fileLock.acquire()
             #Grava as informacoes em arquivo de texto
+            fileLock.acquire()
             writeFile(["clientdata", "clients", "stations", fileName], stationInfo)
             fileLock.release()
             
@@ -302,6 +304,7 @@ def registerChargeStation(requestID, stationAddress, requestParameters):
 #Funcao para registrar novo veiculo
 def registerVehicle(requestID, vehicleAddress):
     
+    #Globais utilizadas
     global fileLock
     global randomIDLock
 
@@ -318,11 +321,9 @@ def registerVehicle(requestID, vehicleAddress):
     #Concatena a string do nome do arquivo do veiculo
     vehicleFileName = (vehicleRandomID + ".json")
 
-    fileLock.acquire()
-
     #Cria um novo arquivo para o veiculo
+    fileLock.acquire()
     writeFile(["clientdata", "clients", "vehicles", vehicleFileName], dataTable)
-
     fileLock.release()
 
     randomIDLock.release()
@@ -339,6 +340,7 @@ def registerVehicle(requestID, vehicleAddress):
 #Funcao para verificar o veiculo atualmente reservado em determinada estacao de carga
 def getBookedVehicle(requestID, stationAddress, requestParameters):
     
+    #Globais utilizadas
     global fileLock
 
     #Caso os parametros da requisicao sejam do tamanho adequado...
@@ -356,7 +358,7 @@ def getBookedVehicle(requestID, stationAddress, requestParameters):
         fileLock.release()
 
         #Caso o ID da estacao seja valido
-        if(stationVerify == True):
+        if((stationVerify == True) and (len(stationID) == 24)):
 
             #Obtem o tempo atual, para marcar como online
             lastOnline = str(time.time())
@@ -374,6 +376,7 @@ def getBookedVehicle(requestID, stationAddress, requestParameters):
             
             fileLock.release()
 
+            #Separa as informacoes desejadas
             bookedVehicle = stationInfo["actual_vehicle"]
             remainingCharge = stationInfo["remaining_charge"]
             
@@ -397,6 +400,7 @@ def getBookedVehicle(requestID, stationAddress, requestParameters):
 #Funcao para liberar estacao de carga
 def freeChargingStation(requestID, stationAddress, requestParameters):
     
+    #Globais utilizadas
     global fileLock
 
     #Caso os parametros da requisicao sejam do tamanho adequado...
@@ -413,8 +417,8 @@ def freeChargingStation(requestID, stationAddress, requestParameters):
         #Verifica se existe estacao com o ID fornecido
         stationVerify = verifyFile(["clientdata", "clients", "stations"], fileName)
 
-        #Caso o ID da estacao fornecido seja valido
-        if (stationVerify == True):
+        #Caso o ID da estacao seja valido
+        if((stationVerify == True) and (len(stationID) == 24)):
             
             #Recupera informacoes da estacao de carga
             stationInfo = readFile(["clientdata", "clients", "stations", fileName])
@@ -452,6 +456,7 @@ def freeChargingStation(requestID, stationAddress, requestParameters):
 #Funcao para retornar a distancia ate o posto de recarga mais proximo e seu ID
 def respondWithDistance(requestID, vehicleAddress, requestParameters):
 
+    #Globais utilizadas
     global fileLock
 
     #Informacoes iniciais da mensagem de resposta
@@ -461,6 +466,7 @@ def respondWithDistance(requestID, vehicleAddress, requestParameters):
 
     fileLock.acquire()
 
+    #Adquire uma lista com o nome dos arquivos de todas as estacoes
     stationList = listFiles(["clientdata", "clients", "stations"])
 
     #Loop que percorre a lista de estacoes de carga
@@ -469,12 +475,9 @@ def respondWithDistance(requestID, vehicleAddress, requestParameters):
         #Nome 
         actualStationFileName = stationList[stationIndex]
 
-        if (actualStationFileName != ".gitignore"):
-
+        if (len(actualStationFileName) == 29):
 
             actualID = ""
-
-            print(stationList)
             
             #Acha o ID da estacao a retornar
             for IDIndex in range(0, 24):
@@ -496,7 +499,7 @@ def respondWithDistance(requestID, vehicleAddress, requestParameters):
                 isOnline = True
 
             #Se a estacao estiver disponivel e se estivermos no primeiro indice da lista ou se a nova menor distancia for menor que a ultima
-            if ((isOnline == True) and (actualStationTable["actual_vehicle"] == "") and ((stationIndex == 1) or (actualDistance < distanceToReturn))):
+            if ((isOnline == True) and (actualStationTable["actual_vehicle"] == "") and ((IDToReturn == "0") or (actualDistance < distanceToReturn))):
                 
                 #Atualiza os valores a serem retornados (achou distancia menor)
                 distanceToReturn = actualDistance
@@ -520,6 +523,7 @@ def respondWithDistance(requestID, vehicleAddress, requestParameters):
 #Funcao para tentar realizar (reserva de) abastecimento
 def attemptCharge(requestID, vehicleAddress, requestParameters):
 
+    #Globais utilizadas
     global fileLock
 
     #Caso os parametros da requisicao sejam do tamanho adequado...
@@ -543,7 +547,7 @@ def attemptCharge(requestID, vehicleAddress, requestParameters):
         stationVerify = verifyFile(["clientdata", "clients", "stations"], stationFileName)
         fileLock.release()
             
-        if (stationVerify == True):
+        if ((stationVerify == True) and (len(stationID == 24))):
             
             #Zona de exclusao mutua referente a manipulacao de arquivos
             fileLock.acquire()
@@ -551,7 +555,7 @@ def attemptCharge(requestID, vehicleAddress, requestParameters):
             fileLock.release()
 
         #Caso o ID do veiculo/estacao fornecidos sejam validos e a compra seja confirmada
-        if ((vehicleVerify == True) and (stationVerify == True) and confirmPurchase(purchaseID) == True):
+        if ((vehicleVerify == True) and (len(vehicleID) == 24) and (stationVerify == True) and confirmPurchase(purchaseID) == True):
 
             purchaseDone = False
 
@@ -636,6 +640,7 @@ def attemptCharge(requestID, vehicleAddress, requestParameters):
 #Funcao para retornar informacoes de uma compra em especifico
 def respondWithPurchase(requestID, vehicleAddress, requestParameters):
 
+    #Globais utilizadas
     global fileLock
 
     #Informacoes iniciais da mensagem de resposta
@@ -651,15 +656,16 @@ def respondWithPurchase(requestID, vehicleAddress, requestParameters):
         vehicleFileName = (requestParameters[0] + ".json")
         purchaseIndex = requestParameters[1]
 
-        fileLock.acquire()
         #Verifica se existe veiculo com o ID especificado
+        fileLock.acquire()
         verifyVehicle = verifyFile(["clientdata", "clients", "vehicles"], vehicleFileName)
         fileLock.release()
 
-        if(verifyVehicle == True):
-
-            fileLock.acquire()
+        #Se existe veiculo valido no ID
+        if((verifyVehicle == True) and (len(vehicleFileName) == 29)):
+            
             #Le o arquivo do veiculo com o ID especificado
+            fileLock.acquire()
             vehicleInfo = readFile(["clientdata", "clients", "vehicles", vehicleFileName])
             fileLock.release()
 
@@ -695,11 +701,12 @@ def respondWithPurchase(requestID, vehicleAddress, requestParameters):
 
     #Responde o status da requisicao para o cliente
     sendResponse(vehicleAddress, [purchaseIDToReturn, totalToReturn, unitaryPriceToReturn, amountToReturn])
-    
+
 
 #Funcao para cada thread que espera uma requisicao
 def requestCatcher():
 
+    #Globais utilizadas
     global isExecuting
     global threadCount
 
@@ -733,7 +740,8 @@ def requestCatcher():
             
             #Verifica se a requisicao atual tem ID diferente de 0 e se vem de um endereco que ja fez requisicoes
             if ((requestID != "0" )):
-
+                
+                #Verifica se ja existe um arquivo de requisicao para o endereco
                 fileLock.acquire()
                 requestVerify = verifyFile(["clientdata", "requests"], requestFileName)
                 fileLock.release()
@@ -780,6 +788,11 @@ def requestCatcher():
                 elif (requestName == 'nsr'):
 
                     respondWithDistance(requestID,clientAddress,requestParameters)
+                
+                elif(requestName == 'gpr'):
+
+                    respondWithPurchase(requestID, clientAddress, requestParameters)
+            
             #Caso contrario, manda a resposta novamente
             else:
 
@@ -788,7 +801,7 @@ def requestCatcher():
         #Caso contrario e se o endereco do cliente nao for vazio
         elif clientAddress != "":
             
-            #Response que a requisicao e invalida
+            #Responde que a requisicao e invalida
             sendResponse(clientAddress, 'ERR')
     
     print("THREAD ENCERRADO (" + str(threadCount) + "/" + str(maxThreads) + ")")
@@ -797,7 +810,7 @@ def requestCatcher():
 
 #Inicio do programa
 
-print("PRESSIONE ENTER APOS A SEQUENCIA DE INICIALIZACAO PARA ENCERRAR A APLICACAO")
+print("PRESSIONE ENTER A QUALQUER MOMENTO PARA ENCERRAR A APLICACAO")
 
 #Obtem um ID aleatorio de 24 elementos alfanumericos e exibe mensagem da operacao
 randomID = getRandomID()
@@ -811,6 +824,8 @@ for threadIndex in range(0, maxThreads):
     newThread.start()
     threadList.append(newThread)
 
+#Fora dos threads, input() apenas segura a execucao do programa principal ate ser pressionado
 input()
+#Encerra o programa
 print("AGUARDE O ENCERRAMENTO:")
 isExecuting = False
