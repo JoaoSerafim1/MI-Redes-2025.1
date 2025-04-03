@@ -173,8 +173,8 @@ def sendResponse(clientAddress, response):
     try:
         socket_sender.connect((clientAddressString, 8002))
         socket_sender.send(bytes(serializedResponse, 'UTF-8'))
-    except Exception as err:
-        print(err)
+    except:
+        pass
 
     #Fecha a conexao (desfaz o soquete)
     socket_sender.close()
