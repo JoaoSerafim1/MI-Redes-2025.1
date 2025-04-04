@@ -810,11 +810,16 @@ def requestCatcher():
 
 #Inicio do programa
 
-print("PRESSIONE ENTER A QUALQUER MOMENTO PARA ENCERRAR A APLICACAO")
+#Obtem e printa o endereco IP do servidor
+hostAddress = socket.gethostbyname(socket.gethostname())
+print("ENDERECO IP DO SERVIDOR: " + hostAddress)
 
 #Obtem um ID aleatorio de 24 elementos alfanumericos e exibe mensagem da operacao
 randomID = getRandomID()
 print("ID para o proximo cadastro de estacao de carga: " + randomID)
+
+#Exibe mensagem que diz como sair da aplicacao
+print("PRESSIONE ENTER A QUALQUER MOMENTO PARA ENCERRAR A APLICACAO")
 
 #Loop para indexar todos os threads
 for threadIndex in range(0, maxThreads):
