@@ -1,4 +1,18 @@
-# Instalação e uso do kit da aplicação
+# Instalação e uso da aplicação
+#### AVISO: Antes de utilizar qualquer das interfaces gráficas presentes em alguns dos programas python, certifique-se de as bibliotecas "x11 Server Utils", "TKinter" e "Custom TKinter" para Linux estão instaladas, e em seguida habilite a execução remota de programas.
+```console
+sudo apt-get install python3-tk -y && \
+pip3 install customtkinter --break-system-packages && \
+sudo apt-get install x11-xserver-utils -y
+```
+(Instala as bibliotecas)
+```console
+xhost +
+```
+(Habilita a execução remota de programas, deve ser executado sempre que o sistema for reiniciado)
+
+## 📦 Instalando os pacotes individuais
+
 ## 🐧 🐢 Usando o arquivo shell script (dockerscript.sh) para executar açoes de construção, modificação e acesso interativo do/ao ambiente docker:
 ```console
 bash dockerscript.sh ACAO NUM
@@ -40,17 +54,6 @@ bash dockerscript.sh update
 ```console
 bash dockerscript.sh control 2
 ```
-#### AVISO: Antes de utilizar qualquer das interfaces gráficas presentes em alguns dos programas python, certifique-se de a bibliotecas "x11 Server Utils", "TKinter" e "Custom TKinter" para Linux estão instaladas, e em seguida habilite a execução remota de programas.
-```console
-sudo apt-get install python3-tk -y && \
-pip3 install customtkinter --break-system-packages && \
-sudo apt-get install x11-xserver-utils -y
-```
-(Instala as bibliotecas)
-```console
-xhost +
-```
-(Habilita a execução remota de programas)
 
 ### $${\color{blue}"import"}$$ Copia os arquivos e/ou diretórios gerados pelas aplicações em execução nos containers para a pasta `/files/imported`.
 
