@@ -40,11 +40,13 @@ bash dockerscript.sh update
 ```console
 bash dockerscript.sh control 2
 ```
-#### AVISO: Antes de utilizar qualquer das interfaces gráficas presentes em alguns dos programas python, certifique-se de a biblioteca x11 Server Utils para Linux está instalada, e em seguida habilite a execução remota de programas.
+#### AVISO: Antes de utilizar qualquer das interfaces gráficas presentes em alguns dos programas python, certifique-se de a bibliotecas "x11 Server Utils", "TKinter" e "Custom TKinter" para Linux estão instaladas, e em seguida habilite a execução remota de programas.
 ```console
-sudo apt-get install x11-xserver-utils
+sudo apt-get install python3-tk -y && \
+pip3 install customtkinter --break-system-packages && \
+sudo apt-get install x11-xserver-utils -y
 ```
-(Instala a biblioteca x11 Server Utils)
+(Instala as bibliotecas)
 ```console
 xhost +
 ```
@@ -82,6 +84,7 @@ bash dockerscript.sh scrap
 - **Como resolver problemas ao executar o Docker**:
   - [_Cannot connect to the Docker daemon at unix:/var/run/docker.sock. Is the docker daemon running?_](https://stackoverflow.com/questions/44678725/cannot-connect-to-the-docker-daemon-at-unix-var-run-docker-sock-is-the-docker)
   - [_Is it possible to use docker without sudo?_](https://askubuntu.com/questions/1165877/is-it-possible-to-use-docker-without-sudo)
+  - [_can i install customtkinter on linux_](https://www.reddit.com/r/Tkinter/comments/15sqnvx/can_i_install_customtkinter_on_linux/)
   - [_docker \_tkinter.TclError: couldn't connect to display_](https://stackoverflow.com/questions/49169055/docker-tkinter-tclerror-couldnt-connect-to-display/49229627#49229627)
 - **Tutoriais**:
   - [_Docker Containers: IPC using Sockets — Part 2_](https://medium.com/techanic/docker-containers-ipc-using-sockets-part-2-834e8ea00768)
