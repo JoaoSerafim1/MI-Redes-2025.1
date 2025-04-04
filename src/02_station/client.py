@@ -34,18 +34,18 @@ class Station():
         #Serializa a requisicao utilizando json
         serializedRequest = json.dumps(request)
 
-        print("--------------------------------------------")
-        print(serverName)
-        print(SERVER)
-        print(serializedRequest)
-        print("--------------------------------------------")
+        #print("--------------------------------------------")
+        #print(serverName)
+        #print(SERVER)
+        #print(serializedRequest)
+        #print("--------------------------------------------")
         
         try:
             #Tenta fazer a conexao (endereco do servidor, porta 8001), envia a requisicao em formato "bytes", codec "UTF-8", pela conexao
             socket_sender.connect((SERVER, 8001))
             socket_sender.send(bytes(serializedRequest, 'UTF-8'))
-        except Exception as err:
-            print(err)
+        except:
+            pass
 
         #Fecha a conexao (desfaz o soquete)
         socket_sender.close()
@@ -84,11 +84,11 @@ class Station():
         #Se uma resposta valida foi recebida, a mensagem nao deve ser vazia
         if (len(decodedBytes) > 0):
 
-            print("=============================================")
-            print(add)
-            print(msg)
-            print(decodedBytes)
-            print("=============================================")
+            #print("=============================================")
+            #print(add)
+            #print(msg)
+            #print(decodedBytes)
+            #print("=============================================")
 
             #De-serializa a mensagem decodificada 
             unserializedObj = json.loads(decodedBytes)
@@ -244,7 +244,7 @@ if (verifyFile(["stationdata"], "station_data.json") == False):
     #Valores dos pares chave-valor sao sempre string para evitar problemas com json
     dataTable["coord_x"] = str(enterNumber("Coordenada x do posto de recarga: ", "ENTRADA INVALIDA."))
     dataTable["coord_y"] = str(enterNumber("Coordenada y do posto de recarga: ", "ENTRADA INVALIDA."))
-    dataTable["unitary_price"] = str(enterNumber("Preco unitario do Wh, em BRL: ", "ENTRADA INVALIDA."))
+    dataTable["unitary_price"] = str(enterNumber("Preco unitario do KWh, em BRL: ", "ENTRADA INVALIDA."))
     dataTable["actual_vehicle"] = ""
     dataTable["remaining_charge"] = ""
 
@@ -278,10 +278,10 @@ station.unitaryPrice = float(loadedTable["unitary_price"])
 station.actualVehicleID = loadedTable["actual_vehicle"]
 station.remainingCharge = loadedTable["remaining_charge"]
 
-#Print de teste
+#Print das informacões
 print("*********************************************")
-print(station.ID)
-print(station.unitaryPrice)
+print("ID:" + str(station.ID))
+print("Preço do KWh (BRL):" +  str(station.unitaryPrice))
 print("*********************************************")
 
 #Loop do programa

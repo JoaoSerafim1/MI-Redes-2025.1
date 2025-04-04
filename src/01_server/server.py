@@ -123,11 +123,11 @@ def listenToRequest(timeout):
     #Se uma resposta valida foi recebida, a mensagem nao deve ser vazia
     if (len(decodedBytes) > 0):
 
-        print("=============================================")
-        print(add)
-        print(msg)
-        print(decodedBytes)
-        print("=============================================")
+        #print("=============================================")
+        #print(add)
+        #print(msg)
+        #print(decodedBytes)
+        #print("=============================================")
 
         #De-serializa a mensagem decodificada 
         unserializedObj = json.loads(decodedBytes)
@@ -156,11 +156,11 @@ def sendResponse(clientAddress, response):
     #Serializa a requisicao utilizando json
     serializedResponse = json.dumps(response)
 
-    print("--------------------------------------------")
-    print(clientAddress)
-    print(clientAddressString)
-    print(serializedResponse)
-    print("--------------------------------------------")
+    #print("--------------------------------------------")
+    #print(clientAddress)
+    #print(clientAddressString)
+    #print(serializedResponse)
+    #print("--------------------------------------------")
 
     senderSocketLock.acquire()
 
@@ -547,7 +547,7 @@ def attemptCharge(requestID, vehicleAddress, requestParameters):
         stationVerify = verifyFile(["clientdata", "clients", "stations"], stationFileName)
         fileLock.release()
             
-        if ((stationVerify == True) and (len(stationID == 24))):
+        if ((stationVerify == True) and (len(stationID) == 24)):
             
             #Zona de exclusao mutua referente a manipulacao de arquivos
             fileLock.acquire()
@@ -781,7 +781,7 @@ def requestCatcher():
 
                     freeChargingStation(requestID, clientAddress, requestParameters)
                 
-                elif (requestName == 'rvp'):
+                elif (requestName == 'bcs'):
                     
                     attemptCharge(requestID, clientAddress, requestParameters)
                 

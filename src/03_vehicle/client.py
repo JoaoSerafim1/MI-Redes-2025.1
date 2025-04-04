@@ -1,15 +1,17 @@
 #Importa bibliotecas basicas do python 3
 import json
 import socket
+import threading
 
 #Importa as bibliotecas customizadas da aplicacao
 from lib.db import *
 from lib.io import *
+from lib.pr import *
 
-#modulo para geração de ID
-import uuid
 #Importa customTkinter
-import customtkinter as ctk 
+import customtkinter as ctk
+
+
 #Classe do usuario
 class User():
     
@@ -18,8 +20,8 @@ class User():
         
         #Atributos
         self.ID = ""
-        self.user = ""
         self.battery_level = ""
+        self.capacity = ""
         self.vehicle = ""
         self.payment_history = {}
     
@@ -37,18 +39,18 @@ class User():
         #Serializa a requisicao utilizando json
         serializedRequest = json.dumps(request)
 
-        print("--------------------------------------------")
-        print(serverName)
-        print(SERVER)
-        print(serializedRequest)
-        print("--------------------------------------------")
+        #print("--------------------------------------------")
+        #print(serverName)
+        #print(SERVER)
+        #print(serializedRequest)
+        #print("--------------------------------------------")
         
         try:
             #Tenta fazer a conexao (endereco do servidor, porta 8001), envia a requisicao em formato "bytes", codec "UTF-8", pela conexao
             socket_sender.connect((SERVER, 8001))
             socket_sender.send(bytes(serializedRequest, 'UTF-8'))
-        except Exception as err:
-            print(err)
+        except:
+            pass
 
         #Fecha a conexao (desfaz o soquete)
         socket_sender.close()
@@ -84,11 +86,11 @@ class User():
         #Se uma resposta valida foi recebida, a mensagem nao deve ser vazia
         if (len(decodedBytes) > 0):
 
-            print("=============================================")
-            print(add)
-            print(msg)
-            print(decodedBytes)
-            print("=============================================")
+            #print("=============================================")
+            #print(add)
+            #print(msg)
+            #print(decodedBytes)
+            #print("=============================================")
 
             #De-serializa a mensagem decodificada 
             unserializedObj = json.loads(decodedBytes)
@@ -99,6 +101,7 @@ class User():
         #Retorna atributos de uma mensagem nao-recebida ou vazia
         return (add, "")
     
+
     #Funcao para registrar o veiculo
     def registerVehicle(self, requestID):
         
@@ -128,31 +131,13 @@ class User():
 
         #Retorna a resposta (ID do veiculo)
         return response
-
-    def batteryCheck(self): #notifica se a bateria esta em estado critico
-        if self.battery_level < 0.3:
-            return 1
-        return 0
-    
-    def bookChargeSpot(self, requestID): #reserva posto
-
-        requestContent = [requestID, 'bcs', '']
-        self.sendRequest('charge_server', requestContent)
-        (add, response) = self.listenToResponse()
-
-        while (len(response) != 1):
-            self.sendRequest('charge_server', requestContent)
-            (add, response) = self.listenToResponse()
-
-        if (int(requestID) < 63):
-            requestID = str(int(requestID) + 1)
-        else:
-            requestID = "0"
-
-        return response
     
     def nearestSpotRequest(self, requestID): #solicita distancia do posto mais proximo
         
+        global nearestStationID
+        global nearestStationDistance
+        global nearestStationPrice
+
         localDataTable = readFile(["vehicledata", "vehicle_data.json"])
         
         requestParameters = [localDataTable["coord_x"],localDataTable["coord_y"]]
@@ -160,41 +145,101 @@ class User():
         self.sendRequest('charge_server', requestContent)
         (add, response) = self.listenToResponse()
 
-        while (len(response) < 1):
+        if (int(requestID) < 63):
+            requestID = str(int(requestID) + 1)
+        else:
+            requestID = "0"
+
+        if (len(response) < 1):
+            
+            nearestStationID = ""
+            nearestStationDistance = "SERVIDOR INDISPONÍVEL"
+            nearestStationPrice = ""
+        
+        elif (response[0] == "0"):
+            
+            nearestStationID = ""
+            nearestStationDistance = "NENHUMA ESTAÇÃO DISPONÍVEL ENCONTRADA"
+            nearestStationPrice = ""
+        
+        else:
+            
+            nearestStationID = response[0]
+            nearestStationDistance = (" " + str(response[1]) + " Km ")
+            nearestStationPrice = response[2]
+    
+    def simulateForNearestSpot(self, requestID): #Obtem as informacoes de compra
+
+        global nearestStationID
+        global nearestStationPrice
+
+        global nextPurchaseID
+        global nextAmountToPay
+        
+        if((float(self.battery_level) < 1) and (nearestStationID != "")):
+            
+            nextPurchaseID, nextAmountToPay = simulatePayment(self.capacity, self.battery_level, nearestStationPrice)
+
+    def payForNearestSpot(self, requestID): #reserva posto
+
+        global nearestStationID
+
+        global nextPurchaseID
+        global nextAmountToPay
+        global purchaseResult
+
+        if((float(self.battery_level) < 1) and (nearestStationID != "") and (confirmPayment(nextPurchaseID) == True)):
+            
+            requestParameters = [nextPurchaseID, self.ID, nearestStationID, nextAmountToPay]
+            requestContent = [requestID, 'bcs', requestParameters]
+
             self.sendRequest('charge_server', requestContent)
             (add, response) = self.listenToResponse()
 
-        if (int(requestID) < 63):
-            requestID = str(int(requestID) + 1)
-        else:
-            requestID = "0"
+            while(response == ""):
 
-        return response
-        
-    def pay(self,requestID): #metodo que envia a solicitacao de pagamento ao servidor, recebe a confirmação e atualiza payment_history 
-        payDialog = ctk.CTkInputDialog(text="Digite o valor a ser pago:", title="Pagamento")
-        paidAmount = payDialog.get_input()
-        print('pagou'+paidAmount)
-        purchaseID = str(uuid.UUID.int)
-        requestParameters = [purchaseID,self.ID,'',paidAmount]
-        
-        requestContent = [requestID,'rvp',requestParameters]
-        self.sendRequest('charge_server',requestContent)
-        (add,response) = self.listenToResponse()
+                self.sendRequest('charge_server', requestContent)
+                (add, response) = self.listenToResponse()
 
-        while (len(response) != 1):
-            self.sendRequest('charge_server',requestContent)
-            (add,response) = self.listenToResponse()
-        
-        if (int(requestID) < 63):
-            requestID = str(int(requestID) + 1)
-        else:
-            requestID = "0"
+            if(response == "OK"):
+                purchaseResult = "Ponto reservado. Espere de 1 a 2 minutos para comecar o processo de recarga."
+            else:
+                purchaseResult = "O local está reservado ou é inválido. Sua compra foi estornada automaticamente."
 
-        return response
+            if (int(requestID) < 63):
+                requestID = str(int(requestID) + 1)
+            else:
+                requestID = "0"
+
+            nextPurchaseID = ""
     
-    def paymentCheck(self): #visualiza payment_history
-        print(self.payment_history)
+
+def infoUpdate():
+
+    while True:
+
+        #Carrega as informacoes gravadas (vehicle_data)
+        loadedTable = readFile(["vehicledata", "vehicle_data.json"])
+
+        #Modifica as informacoes do objeto do veiculo
+        vehicle.battery_level = loadedTable["battery_level"]
+        vehicle.capacity = loadedTable["capacity"]
+
+        battery_info_text.set(" Carga: " + str(float(vehicle.battery_level) * 100) + "% => " + str(float(vehicle.capacity) * float(vehicle.battery_level)) + "/" + str(vehicle.capacity) + " KWh ")
+        if (float(vehicle.battery_level) < 0.3):
+            critical_battery_text.set(" BATERIA EM NÍVEL CRÍTICO! ")
+        else:
+            critical_battery_text.set(" BATERIA NORMAL ")
+        
+        distance_info_text.set(str(nearestStationDistance))
+
+        if(len(nextPurchaseID) > 0):
+            next_purchase_info_text.set(" UUID da compra: " + nextPurchaseID + " / TOTAL: " + nextAmountToPay + " ")
+        else:
+            next_purchase_info_text.set(" Não existe compra esperando confirmação. ")
+
+        next_purchase_result_text.set(purchaseResult)
+
 
 #Programa inicia aqui
 #Cria um objeto da classe User
@@ -202,6 +247,14 @@ vehicle = User()
 
 #Valores iniciais do programa
 requestID = "0"
+nearestStationID = ""
+nearestStationDistance = ""
+nearestStationPrice = ""
+
+nextPurchaseID = ""
+nextAmountToPay = ""
+
+purchaseResult = ""
 
 #Cria um dicionario dos atributos do veiculo
 dataTable = {}
@@ -217,7 +270,7 @@ if (verifyFile(["vehicledata"], "ID.txt") == False):
 if (verifyFile(["vehicledata"], "vehicle_data.json") == False):
     
     #Valores dos pares chave-valor sao sempre string para evitar problemas com json
-    dataTable["capacity"] = str(enterNumber("Capacidade atual de carga do veiculo, em Wh: ", "ENTRADA INVALIDA."))
+    dataTable["capacity"] = str(enterNumber("Capacidade atual de carga do veiculo, em KWh: ", "ENTRADA INVALIDA."))
     dataTable["battery_level"] = "1.0"
     dataTable["coord_x"] = "1.0"
     dataTable["coord_y"] = "1.0"
@@ -228,37 +281,44 @@ if (verifyFile(["vehicledata"], "vehicle_data.json") == False):
 #Carrega as informacoes gravadas (ID)
 vehicle.ID = readFile(["vehicledata", "ID.txt"])
 
-#Carrega as informacoes gravadas (vehicle_data)
-loadedTable = readFile(["vehicledata", "vehicle_data.json"])
-
-#Modifica as informacoes do objeto do veiculo
-vehicle.battery_level = loadedTable["battery_level"]
-
-#Print de teste
-print("*********************************************")
-print(vehicle.ID)
-print(vehicle.battery_level)
-print("*********************************************")
-
-
 frame = ctk.CTk()
 frame._set_appearance_mode('dark')
 frame.title('Cliente')
 frame.geometry('400x600')
 
-userInfo = ctk.CTkLabel(frame,text='fulano')
-userInfo.pack(pady=10)
+userID = ctk.CTkLabel(frame,text=(" " + vehicle.ID + " "))
+userID.pack(pady=10)
 
-spotRequestButton = ctk.CTkButton(frame,text='Distância até posto de recarga',command=lambda:vehicle.nearestSpotRequest(requestID))
+battery_info_text = ctk.StringVar()
+battery_info = ctk.CTkLabel(frame,textvariable=battery_info_text)
+battery_info.pack(pady=10)
+
+critical_battery_text = ctk.StringVar()
+critical_battery = ctk.CTkLabel(frame,textvariable=critical_battery_text)
+critical_battery.pack(pady=5)
+
+spotRequestButton = ctk.CTkButton(frame,text=' Obter a distância até a estação de recarga mais próxima ',command=lambda:vehicle.nearestSpotRequest(requestID))
 spotRequestButton.pack(pady=10)
 
-bookButton = ctk.CTkButton(frame,text='reservar posto',command=lambda:vehicle.bookChargeSpot(requestID))
+distance_info_text = ctk.StringVar()
+distance_info = ctk.CTkLabel(frame,textvariable=distance_info_text)
+distance_info.pack(pady=5)
+
+simulatePayButton = ctk.CTkButton(frame,text=' Gerar guia de pagamento ',command=lambda:vehicle.simulateForNearestSpot(requestID))
+simulatePayButton.pack(pady=10)
+
+next_purchase_info_text = ctk.StringVar()
+next_purchase_info = ctk.CTkLabel(frame,textvariable=next_purchase_info_text)
+next_purchase_info.pack(pady=5)
+
+bookButton = ctk.CTkButton(frame,text=' Recarregar totalmente na estação mais próxima ',command=lambda:vehicle.payForNearestSpot(requestID))
 bookButton.pack(pady=10)
 
-payButton = ctk.CTkButton(frame,text='Pagar',command=lambda:vehicle.pay(requestID))
-payButton.pack(pady=10)
+next_purchase_result_text = ctk.StringVar()
+next_purchase_result = ctk.CTkLabel(frame,textvariable=next_purchase_result_text)
+next_purchase_result.pack(pady=5)
 
-spotDistanceInfo = ctk.CTkLabel(frame,text="")
-spotDistanceInfo.pack(pady=5)
+newThread = threading.Thread(target=infoUpdate, args=())
+newThread.start()
 
 frame.mainloop()
