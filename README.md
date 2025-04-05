@@ -1,19 +1,59 @@
 # Instalação e uso da aplicação
-#### AVISO: Antes de utilizar qualquer das interfaces gráficas presentes em alguns dos programas python, certifique-se de as bibliotecas "x11 Server Utils", "TKinter" e "Custom TKinter" para Linux estão instaladas, e em seguida habilite a execução remota de programas.
+## Requisitos básicos
+- Sistema Operacional compatível com protocolo TCP-IP e Python (ex: [Ubuntu](https://ubuntu.com/download), [Windows](https://www.microsoft.com/pt-br/windows/))
+- [Python](https://www.python.org/downloads/) 3.9
+
+## 📦 Instalando e utilizando as diferentes versões do sistema distribuído
+
+As versões do sistema estão disponíveis individualmente neste repositório online em formato .zip, na sessão "Releases" (encontrada no canto direito da tela inicial do repositório na maioria dos navegadores)
+
+#### AVISO: Antes de utilizar qualquer das interfaces gráficas presentes em alguns dos programas python, certifique-se de as bibliotecas "TKinter" e "Custom TKinter" estão instaladas diretamente na máquina que exibirá tais interfaces.
 ```console
 sudo apt-get install python3-tk -y && \
-pip3 install customtkinter --break-system-packages && \
-sudo apt-get install x11-xserver-utils -y
+pip3 install customtkinter --break-system-packages
 ```
-(Instala as bibliotecas)
-```console
-xhost +
-```
-(Habilita a execução remota de programas, deve ser executado sempre que o sistema for reiniciado)
+##### (Instala as bibliotecas em sistemas tipo Linux, consulte documentação do Python para fazer o mesmo em outros sistemas operacionais)
 
-## 📦 Instalando os pacotes individuais
+### ☁️ Servidor
 
-## 🐧 🐢 Usando o arquivo shell script (dockerscript.sh) para executar açoes de construção, modificação e acesso interativo do/ao ambiente docker:
+O arquivo .zip do servidor possui ```server``` antes de seu número de versão. Para iniciar o programa do servidor, execute o arquivo ```server.py```, encontrado no diretório principal da aplicação.
+
+![Tela inicial](/imgs/server_start_screen.png?raw=true "Instruções do programa e informação do endereço do servidor e do ID para cadastro da próxima estação de carga")
+
+Após o cadastro de uma estação de carga, o servidor automaticamente gerará um novo ID que deverá ser utilizado na próxima operação do tipo, e em seguida exibirá na tela tal informação.
+
+![Tela inicial apos primeira carga](/imgs/server_after_first_station.png?raw=true "Resultado no terminal de uma operação de cadastro de estação de carga")
+
+O recebimento de mensagens, bem como a execução de ações em cima do banco de dados do servidor, são todas operações registrados em arquivos de texto (logs), os quais podem ser encontrados nas pastas ```/logs/received/``` (mensagens recebidas) e ```logs/performed/``` (ações executadas pelo servidor).
+
+Logs possuem o seguinte formato:
+- Título: YYYY-MM-DDD = Data local
+- Conteúdo:
+  - [YYYY-MM-DDD hh-mm-ss.ssssss] => Data e horário locais (24 horas)
+  - NAME:
+  - NOME-DA-ENTRADA => Informação do nome da entrada no log
+    - RVMSG:         Mensagem recebida
+    - RGTSTATION:    Registrar nova estação
+    - RGTVEHICLE:    Registrar novo veículo
+    - GETBOOKED:     Obter informações acerca de possível veículo agendado (estação)
+    - FREESPOT:      Liberar estação para agendamento
+    - GETDISTANCE:   Obter e retornar informações da estação dispónível mais próxima de um veículo
+    - PHCCHARGE:     Confirmar pagamento e agendar recarga
+    - PCHDETAILS:    Obter e retornar informações de uma determinada compra (de acordo com o ID do veículo vinculado à compra e ao índice da compra)
+  - TIPO-DA-ENTIDADE => Tipo do identificador da entidade que gerou a entrada
+    - ADDRESS:       Endereço IP (tipo de usuário não-definido)
+    - S_ID:          ID de estação de carga
+    - V_ID:          ID de veículo
+    - V_ADD:         Endereço IP de um usuário que supõe-se ser um veículo
+  - IDENTIFICADOR-DA-ENTIDADE => Identificador da entidade que gerou a entrada
+
+![Tela do arquivo de texto de um log](/imgs/server_log.png?raw=true "Log referentes às ações executadas pelo servidor no dia 04 de Abril de 2025, data local")
+
+Pressionar a tecla ENTER durante a execução do servidor inicia o processo de encerramento da aplicação, como já explicitado anteriormente na saída do terminal.
+
+![Tela de encerramento](/imgs/server_terminating.png?raw=true "Resultado da sequência de encerramento do servidor")
+
+## 🐧 🐢 Como utilizar o arquivo shell script (dockerscript.sh) para executar ações de construção, modificação e acesso interativo do/ao ambiente docker:
 ```console
 bash dockerscript.sh ACAO NUM
 ```
@@ -54,6 +94,15 @@ bash dockerscript.sh update
 ```console
 bash dockerscript.sh control 2
 ```
+#### AVISO: Antes de realizar um acesso remoto a interfaces gráficas, certifique-se de a biblioteca "x11 Server Utils" para Linux está instalada, e em seguida habilite a execução remota de programas.
+```console
+sudo apt-get install x11-xserver-utils -y
+```
+##### (Instala a biblioteca)
+```console
+xhost +
+```
+##### (Habilita a execução remota de programas, deve ser executado sempre que o sistema for reiniciado)
 
 ### $${\color{blue}"import"}$$ Copia os arquivos e/ou diretórios gerados pelas aplicações em execução nos containers para a pasta `/files/imported`.
 
