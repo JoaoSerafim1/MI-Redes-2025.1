@@ -195,12 +195,10 @@ class Station():
 
             #Executa a funcao externa de carga (encontrado em lib/ch.py)
             self.remainingCharge = doCharge(self.actualVehicleID, self.remainingCharge)
-            loadedTable["remaining_charge"] = str(self.remainingCharge)
 
             #Caso a carga restante seja 0, sabemos que acabou o processo, e resetamos o ID do veiculo para vazio
             if (self.remainingCharge == 0):
                 self.actualVehicleID = ""
-                loadedTable["actual_vehicle"] = self.actualVehicleID
 
         #Formula o conteudo da requisicao a ser enviada
         #O conteudo e uma lista de ao menos 4 elementos (ID de quem requeriu, ID da requisicao, nome da requisicao e parametros da mesma)
@@ -245,8 +243,6 @@ if (verifyFile(["stationdata"], "station_data.json") == False):
     dataTable["coord_x"] = str(enterNumber("Coordenada x do posto de recarga: ", "ENTRADA INVALIDA."))
     dataTable["coord_y"] = str(enterNumber("Coordenada y do posto de recarga: ", "ENTRADA INVALIDA."))
     dataTable["unitary_price"] = str(enterNumber("Preco unitario do KWh, em BRL: ", "ENTRADA INVALIDA."))
-    dataTable["actual_vehicle"] = ""
-    dataTable["remaining_charge"] = ""
 
     #E tambem cria o arquivo e preenche com as informacoes contidas no dicionario acima
     writeFile(["stationdata", "station_data.json"], dataTable)
@@ -275,42 +271,26 @@ loadedTable = readFile(["stationdata", "station_data.json"])
 
 #Modifica as informacoes do objeto da estacao
 station.unitaryPrice = float(loadedTable["unitary_price"])
-station.actualVehicleID = loadedTable["actual_vehicle"]
-station.remainingCharge = loadedTable["remaining_charge"]
 
 #Print das informacões
 print("*********************************************")
-print("ID:" + str(station.ID))
-print("Preço do KWh (BRL):" +  str(station.unitaryPrice))
+print("ID: " + str(station.ID))
+print("Preço do KWh (BRL): " +  str(station.unitaryPrice))
 print("*********************************************")
 
 #Loop do programa
 while True:
 
-    #Carrega as informacoes gravadas (station_data)
-    loadedTable = readFile(["stationdata", "station_data.json"])
-
-    #Modifica as informacoes do objeto da estacao
-    station.actualVehicleID = loadedTable["actual_vehicle"]
-    station.remainingCharge = loadedTable["remaining_charge"]
-
-    #Se tem veiculo com carga pendente, faz operacao de carga
-    if (station.actualVehicleID != ""):
-
-        station.chargeSequence()
-
     #Verifica se tem veiculo com carga pendente
     bookedVehicleInfo = station.getBookedVehicle()
 
-    #Caso o tamanho da lista seja maior ou a igual a 2
+    #Caso tenha
     if (bookedVehicleInfo[0] != ""):
         
-        #Atualiza informacoes no dicionario
-        loadedTable["actual_vehicle"] = bookedVehicleInfo[0]
-        loadedTable["remaining_charge"] = bookedVehicleInfo[1]
-        
-        #Grava as informacoes atualizadas
-        writeFile(["stationdata", "station_data.json"], loadedTable)
+        station.actualVehicleID = bookedVehicleInfo[0]
+        station.remainingCharge = bookedVehicleInfo[1]
+
+        station.chargeSequence()
 
     #Caso contrario, espera um minuto antes de fazer qualquer outra coisa
     else:

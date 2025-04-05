@@ -661,8 +661,8 @@ def respondWithPurchase(requestID, vehicleAddress, requestParameters):
         verifyVehicle = verifyFile(["clientdata", "clients", "vehicles"], vehicleFileName)
         fileLock.release()
 
-        #Se existe veiculo valido no ID
-        if((verifyVehicle == True) and (len(vehicleFileName) == 29)):
+        #Se existe veiculo valido no ID e o indice e numerico
+        if((purchaseIndex.isnumeric() == True) and (verifyVehicle == True) and (len(vehicleFileName) == 29)):
             
             #Le o arquivo do veiculo com o ID especificado
             fileLock.acquire()
@@ -673,10 +673,10 @@ def respondWithPurchase(requestID, vehicleAddress, requestParameters):
             purchaseList = vehicleInfo["purchases"]
             
             #Verifica se existe compra no indice especificado da lista
-            if (len(purchaseList) > purchaseIndex):
+            if ((len(purchaseList) > int(purchaseIndex)) and (int(purchaseIndex) >= 0)):
                 
                 #Resgata o ID da compra e concatena o nome do arquivo da compra
-                purchaseID = purchaseList[purchaseIndex]
+                purchaseID = purchaseList[int(purchaseIndex)]
                 purchaseFileName = (purchaseID + ".json")
 
                 #Carrega o arquivo de compra
@@ -688,7 +688,7 @@ def respondWithPurchase(requestID, vehicleAddress, requestParameters):
                 purchaseIDToReturn = purchaseID
                 totalToReturn = purchaseInfo["total"]
                 unitaryPriceToReturn = purchaseInfo["unitary_price"]
-                totalToReturn = purchaseInfo["charge_amount"]
+                amountToReturn = purchaseInfo["charge_amount"]
 
     #Grava o status da requisicao (mesmo conteudo da mensagem enviada como resposta)
     registerRequestResult(vehicleAddress, requestID, [purchaseIDToReturn, totalToReturn, unitaryPriceToReturn, amountToReturn])

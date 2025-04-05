@@ -132,43 +132,51 @@ class User():
         #Retorna a resposta (ID do veiculo)
         return response
     
-    def nearestSpotRequest(self, requestID): #solicita distancia do posto mais proximo
+    #Solicita distancia do posto mais proximo
+    def nearestSpotRequest(self, requestID):
         
         global nearestStationID
         global nearestStationDistance
         global nearestStationPrice
 
+        #Le informacoes do veiculo
         localDataTable = readFile(["vehicledata", "vehicle_data.json"])
         
+        #Confeccina o conteudo da requisicao e envia 1x
         requestParameters = [localDataTable["coord_x"],localDataTable["coord_y"]]
         requestContent = [requestID, 'nsr', requestParameters]
         self.sendRequest('charge_server', requestContent)
         (add, response) = self.listenToResponse()
 
+        #Atualiza o ID da requisicao
         if (int(requestID) < 63):
             requestID = str(int(requestID) + 1)
         else:
-            requestID = "0"
-
+            requestID = "1"
+        
+        #Se nao receber resposta, o servidor esta indisponivel
         if (len(response) < 1):
             
             nearestStationID = ""
-            nearestStationDistance = "SERVIDOR INDISPONÍVEL"
+            nearestStationDistance = " SERVIDOR INDISPONÍVEL "
             nearestStationPrice = ""
         
+        #Se receber resposta com campo do ID da estacao vazio, nenhum estacao foi encontrada (disponivel)
         elif (response[0] == "0"):
             
             nearestStationID = ""
-            nearestStationDistance = "NENHUMA ESTAÇÃO DISPONÍVEL ENCONTRADA"
+            nearestStationDistance = " NENHUMA ESTAÇÃO DISPONÍVEL ENCONTRADA "
             nearestStationPrice = ""
         
+        #Caso contrario, atualiza as informacoes de acordo com o retorno (informacoes da estacao mais proxima)
         else:
             
             nearestStationID = response[0]
-            nearestStationDistance = (" " + str(response[1]) + " Km ")
+            nearestStationDistance = response[1]
             nearestStationPrice = response[2]
     
-    def simulateForNearestSpot(self, requestID): #Obtem as informacoes de compra
+    #Funca que gera a guia de pagamento para recarga
+    def simulateForNearestSpot(self, requestID):
 
         global nearestStationID
         global nearestStationPrice
@@ -176,11 +184,13 @@ class User():
         global nextPurchaseID
         global nextAmountToPay
         
+        #Se a bateria nao esta cheia e existe uma estacao para fazer a recarga, gera a guia de pagamento para encher a bateria
         if((float(self.battery_level) < 1) and (nearestStationID != "")):
             
             nextPurchaseID, nextAmountToPay = simulatePayment(self.capacity, self.battery_level, nearestStationPrice)
 
-    def payForNearestSpot(self, requestID): #reserva posto
+    #Funcao que efetua o pagamento da ultima guia gerada
+    def payForNearestSpot(self, requestID):
 
         global nearestStationID
 
@@ -188,32 +198,166 @@ class User():
         global nextAmountToPay
         global purchaseResult
 
+        #Se a bateria nao esta cheia, existe uma estacao para fazer a recarga e o pagamento foi confirmado
         if((float(self.battery_level) < 1) and (nearestStationID != "") and (confirmPayment(nextPurchaseID) == True)):
             
+            #Faz o conteudo da requisicao
             requestParameters = [nextPurchaseID, self.ID, nearestStationID, nextAmountToPay]
             requestContent = [requestID, 'bcs', requestParameters]
 
+            #Envia a requisicao
             self.sendRequest('charge_server', requestContent)
             (add, response) = self.listenToResponse()
 
+            #Se nao receber resposta valida, repete o envio (so acontece caso o servidor esteja indisponivel)
             while(response == ""):
 
                 self.sendRequest('charge_server', requestContent)
                 (add, response) = self.listenToResponse()
 
+            #Exibe resultado da operacao
             if(response == "OK"):
-                purchaseResult = "Ponto reservado. Espere de 1 a 2 minutos para comecar o processo de recarga."
+                purchaseResult = (" Compra de UUID <" + nextPurchaseID + "> bem-sucedida. Espere de 1 a 2 minutos para comecar o processo de recarga. ")
             else:
-                purchaseResult = "O local está reservado ou é inválido. Sua compra foi estornada automaticamente."
+                purchaseResult = " O local está reservado ou é inválido. Sua compra de UUID <" + nextPurchaseID + "> foi estornada automaticamente. "
 
+            #Atualiza o ID de requisicao
             if (int(requestID) < 63):
                 requestID = str(int(requestID) + 1)
             else:
-                requestID = "0"
+                requestID = "1"
 
+            #Zera o ID da proxima compra
             nextPurchaseID = ""
     
+    #Funcao para obter informacoes da compra no indice a seguir
+    def purchaseBackward(self, requestID):
+        
+        global purchaseHistoryIndex
+        global displayPurchaseID
+        global displayPurchaseTotal
+        global displayPurchasePrice
+        global displayPurchaseCharge
 
+        #Faz o conteudo da requisicao (ID do veiculo e indice atual de compra - 1)
+        requestParameters = [self.ID, str(int(purchaseHistoryIndex) - 1)]
+        requestContent = [requestID, 'gpr', requestParameters]
+
+        #Envia a requisicao
+        self.sendRequest('charge_server', requestContent)
+        (add, response) = self.listenToResponse()
+
+        #Se nao receber resposta valida, repete o envio (so acontece caso o servidor esteja indisponivel)
+        while(response == ""):
+
+            self.sendRequest('charge_server', requestContent)
+            (add, response) = self.listenToResponse()
+
+        #Atualiza o ID de requisicao
+        if (int(requestID) < 63):
+            requestID = str(int(requestID) + 1)
+        else:
+            requestID = "1"
+
+        #Caso a resposta diga que nao encontrou compra naquele indice para o veiculo
+        if(response[0] == "0"):
+
+            #Faz o conteudo da requisicao (ID do veiculo e indice atual de compra)
+            requestParameters = [self.ID, str(purchaseHistoryIndex)]
+            requestContent = [requestID, 'gpr', requestParameters]
+
+            #Envia a requisicao
+            self.sendRequest('charge_server', requestContent)
+            (add, response) = self.listenToResponse()
+
+            #Se nao receber resposta valida, repete o envio (so acontece caso o servidor esteja indisponivel)
+            while(response == ""):
+
+                self.sendRequest('charge_server', requestContent)
+                (add, response) = self.listenToResponse()
+
+            #Atualiza o ID de requisicao
+            if (int(requestID) < 63):
+                requestID = str(int(requestID) + 1)
+            else:
+                requestID = "1"
+
+        #Caso contrario, atualiza o indice atual da compra analisada
+        else:
+
+            purchaseHistoryIndex = str(int(purchaseHistoryIndex) - 1)
+        
+        #Atualiza informacoes da compra exibida
+        displayPurchaseID = response[0]
+        displayPurchaseTotal = response[1]
+        displayPurchasePrice = response[2]
+        displayPurchaseCharge = response[3]
+    
+    #Funcao para obter informacoes da compra no indice a seguir
+    def purchaseForward(self, requestID):
+        
+        global purchaseHistoryIndex
+        global displayPurchaseID
+        global displayPurchaseTotal
+        global displayPurchasePrice
+        global displayPurchaseCharge
+
+        #Faz o conteudo da requisicao (ID do veiculo e indice atual de compra + 1)
+        requestParameters = [self.ID, str(int(purchaseHistoryIndex) + 1)]
+        requestContent = [requestID, 'gpr', requestParameters]
+
+        #Envia a requisicao
+        self.sendRequest('charge_server', requestContent)
+        (add, response) = self.listenToResponse()
+
+        #Se nao receber resposta valida, repete o envio (so acontece caso o servidor esteja indisponivel)
+        while(response == ""):
+
+            self.sendRequest('charge_server', requestContent)
+            (add, response) = self.listenToResponse()
+
+        #Atualiza o ID de requisicao
+        if (int(requestID) < 63):
+            requestID = str(int(requestID) + 1)
+        else:
+            requestID = "1"
+
+        #Caso a resposta diga que nao encontrou compra naquele indice para o veiculo
+        if(response[0] == "0"):
+
+            #Faz o conteudo da requisicao (ID do veiculo e indice atual de compra)
+            requestParameters = [self.ID, str(purchaseHistoryIndex)]
+            requestContent = [requestID, 'gpr', requestParameters]
+
+            #Envia a requisicao
+            self.sendRequest('charge_server', requestContent)
+            (add, response) = self.listenToResponse()
+
+            #Se nao receber resposta valida, repete o envio (so acontece caso o servidor esteja indisponivel)
+            while(response == ""):
+
+                self.sendRequest('charge_server', requestContent)
+                (add, response) = self.listenToResponse()
+
+            #Atualiza o ID de requisicao
+            if (int(requestID) < 63):
+                requestID = str(int(requestID) + 1)
+            else:
+                requestID = "1"
+
+        #Caso contrario, atualiza o indice atual da compra analisada
+        else:
+
+            purchaseHistoryIndex = str(int(purchaseHistoryIndex) + 1)
+        
+        #Atualiza informacoes da compra exibida
+        displayPurchaseID = response[0]
+        displayPurchaseTotal = response[1]
+        displayPurchasePrice = response[2]
+        displayPurchaseCharge = response[3]
+    
+
+#Funcao do thread que monitora mudancas nas informacoes guardadas no arquivo de dados do veiculo
 def infoUpdate():
 
     while True:
@@ -225,20 +369,33 @@ def infoUpdate():
         vehicle.battery_level = loadedTable["battery_level"]
         vehicle.capacity = loadedTable["capacity"]
 
+        #Atualiza label de texto do nivel da bateria e do aviso de bateria critica (menos de 30 porcento)
         battery_info_text.set(" Carga: " + str(float(vehicle.battery_level) * 100) + "% => " + str(float(vehicle.capacity) * float(vehicle.battery_level)) + "/" + str(vehicle.capacity) + " KWh ")
         if (float(vehicle.battery_level) < 0.3):
             critical_battery_text.set(" BATERIA EM NÍVEL CRÍTICO! ")
         else:
             critical_battery_text.set(" BATERIA NORMAL ")
         
-        distance_info_text.set(str(nearestStationDistance))
+        #Atualiza label de texto de informacao da distancia
+        if (nearestStationID != ""):
+            distance_info_text.set((" DISTANCIA: " + nearestStationDistance + " Km | Preço do KWh: " + nearestStationPrice + " "))
+        else:
+            distance_info_text.set(nearestStationDistance)
 
+        #Atualiza texto de informacao da proxima compra a ser realizada
         if(len(nextPurchaseID) > 0):
             next_purchase_info_text.set(" UUID da compra: " + nextPurchaseID + " / TOTAL: " + nextAmountToPay + " ")
         else:
             next_purchase_info_text.set(" Não existe compra esperando confirmação. ")
 
+        #Atualiza texto de informacao da ultima compra realizada
         next_purchase_result_text.set(purchaseResult)
+
+        #Atualiza texto das informacoes do historico de compra
+        purchaseHistoryID.set(" UUID da compra no histórico: " + displayPurchaseID + " ")
+        purchaseHistoryTotal.set(" Valor Total da compra no histórico (BRL): " + displayPurchaseTotal + " ")
+        purchaseHistoryPrice.set(" Preço do KWh da compra no histórico (BRL): " + displayPurchasePrice + " ")
+        purchaseHistoryCharge.set(" Carga total da compra no histórico (KWh): " + displayPurchaseCharge + " ")
 
 
 #Programa inicia aqui
@@ -250,11 +407,14 @@ requestID = "0"
 nearestStationID = ""
 nearestStationDistance = ""
 nearestStationPrice = ""
-
 nextPurchaseID = ""
 nextAmountToPay = ""
-
 purchaseResult = ""
+purchaseHistoryIndex = "0"
+displayPurchaseID = "0"
+displayPurchaseTotal = "0"
+displayPurchasePrice = "0"
+displayPurchaseCharge = "0"
 
 #Cria um dicionario dos atributos do veiculo
 dataTable = {}
@@ -287,7 +447,7 @@ frame.title('Cliente')
 frame.geometry('400x600')
 
 userID = ctk.CTkLabel(frame,text=(" " + vehicle.ID + " "))
-userID.pack(pady=10)
+userID.pack(pady=20)
 
 battery_info_text = ctk.StringVar()
 battery_info = ctk.CTkLabel(frame,textvariable=battery_info_text)
@@ -295,28 +455,50 @@ battery_info.pack(pady=10)
 
 critical_battery_text = ctk.StringVar()
 critical_battery = ctk.CTkLabel(frame,textvariable=critical_battery_text)
-critical_battery.pack(pady=5)
+critical_battery.pack(pady=20)
 
-spotRequestButton = ctk.CTkButton(frame,text=' Obter a distância até a estação de recarga mais próxima ',command=lambda:vehicle.nearestSpotRequest(requestID))
+spotRequestButton = ctk.CTkButton(frame,text=' Obter a distância até a estação de recarga mais próxima e o preço do KWh ',command=lambda:vehicle.nearestSpotRequest(requestID))
 spotRequestButton.pack(pady=10)
 
 distance_info_text = ctk.StringVar()
 distance_info = ctk.CTkLabel(frame,textvariable=distance_info_text)
-distance_info.pack(pady=5)
+distance_info.pack(pady=20)
 
 simulatePayButton = ctk.CTkButton(frame,text=' Gerar guia de pagamento ',command=lambda:vehicle.simulateForNearestSpot(requestID))
 simulatePayButton.pack(pady=10)
 
 next_purchase_info_text = ctk.StringVar()
 next_purchase_info = ctk.CTkLabel(frame,textvariable=next_purchase_info_text)
-next_purchase_info.pack(pady=5)
+next_purchase_info.pack(pady=20)
 
 bookButton = ctk.CTkButton(frame,text=' Recarregar totalmente na estação mais próxima ',command=lambda:vehicle.payForNearestSpot(requestID))
 bookButton.pack(pady=10)
 
 next_purchase_result_text = ctk.StringVar()
 next_purchase_result = ctk.CTkLabel(frame,textvariable=next_purchase_result_text)
-next_purchase_result.pack(pady=5)
+next_purchase_result.pack(pady=30)
+
+purchaseHistoryID = ctk.StringVar()
+purchaseHistoryIDLabel = ctk.CTkLabel(frame,textvariable=purchaseHistoryID)
+purchaseHistoryIDLabel.pack(pady=5)
+
+purchaseHistoryTotal = ctk.StringVar()
+purchaseHistoryTotalLabel = ctk.CTkLabel(frame,textvariable=purchaseHistoryTotal)
+purchaseHistoryTotalLabel.pack(pady=5)
+
+purchaseHistoryPrice = ctk.StringVar()
+purchaseHistoryPriceLabel = ctk.CTkLabel(frame,textvariable=purchaseHistoryPrice)
+purchaseHistoryPriceLabel.pack(pady=5)
+
+purchaseHistoryCharge = ctk.StringVar()
+purchaseHistoryChargeLabel = ctk.CTkLabel(frame,textvariable=purchaseHistoryCharge)
+purchaseHistoryChargeLabel.pack(pady=10)
+
+bckButton = ctk.CTkButton(frame,text=' < ',command=lambda:vehicle.purchaseBackward(requestID))
+bckButton.pack(pady=5)
+
+bckButton = ctk.CTkButton(frame,text=' > ',command=lambda:vehicle.purchaseForward(requestID))
+bckButton.pack(pady=20)
 
 newThread = threading.Thread(target=infoUpdate, args=())
 newThread.start()
