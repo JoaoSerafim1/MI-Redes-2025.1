@@ -3,14 +3,7 @@
 ## Requisitos básicos
 - Sistema Operacional compatível com protocolo TCP-IP e Python (ex: [Ubuntu](https://ubuntu.com/download), [Windows](https://www.microsoft.com/pt-br/windows/))
 - [Python](https://www.python.org/downloads/) 3.9
-
-#### AVISO: Antes de utilizar qualquer das interfaces gráficas presentes em alguns dos programas python, certifique-se de as bibliotecas "TKinter" e "Custom TKinter" estão instaladas diretamente na máquina que exibirá tais interfaces.
-```console
-sudo apt-get install python3-tk -y && \
-pip3 install customtkinter --break-system-packages
-```
-##### (Instala as bibliotecas em sistemas tipo Linux, consulte documentação do Python para fazer o mesmo em outros sistemas operacionais)
-
+  
 ## 📦 Instalando e utilizando as diferentes versões do sistema distribuído
 
 As versões do sistema destinadas a usuários distintos estão disponíveis individualmente neste repositório online em formato .zip, na sessão "Releases" (encontrada no canto direito da tela inicial do repositório na maioria dos navegadores).
@@ -73,6 +66,13 @@ Na atual versão de teste do programa, a recarga é feita apenas pressionando a 
 ![Tela após agendamento de recarga](/imgs/station_recharge.png?raw=true "Processo de recarga de um veículo agendado")
 
 ### 🚘 Veículo (Usuário Final)
+
+#### AVISO: Antes de utilizar quaisquer das interfaces gráficas presentes no módulo de veículos, certifique-se de as bibliotecas "TKinter" e "Custom TKinter" estão instaladas diretamente na máquina que exibirá tais interfaces.
+```console
+sudo apt-get install python3-tk -y && \
+pip3 install customtkinter --break-system-packages
+```
+##### (Instala as bibliotecas em sistemas tipo Linux, consulte documentação do Python para fazer o mesmo em outros sistemas operacionais)
 
 Terceiro e último módulo do sistema, a parte referente ao veículo possui ```vehicle``` antes de seu número de versão do arquivo .zip. Para iniciar a aplicação (incluindo janela gráfica), execute o arquivo ```client.py```, encontrado no diretório principal da aplicação.
 
