@@ -8,6 +8,7 @@ from lib.db import *
 from lib.io import *
 from lib.ch import *
 
+
 #Classe do usuario
 class Station():
     
@@ -21,28 +22,26 @@ class Station():
         self.remainingCharge = 0
     
     #Funcao para enviar uma requisicao ao servidor
-    def sendRequest(self, serverName, request):
+    def sendRequest(self, request):
+
+        global serverAddress
 
         #Cria o soquete e torna a conexao reciclavel
         socket_sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         socket_sender.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         socket_sender.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
 
-        #Obtem o endereco do servidor com base em seu nome
-        SERVER = socket.gethostbyname(serverName)
-
         #Serializa a requisicao utilizando json
         serializedRequest = json.dumps(request)
 
         #print("--------------------------------------------")
-        #print(serverName)
-        #print(SERVER)
+        #print(serverAddress)
         #print(serializedRequest)
         #print("--------------------------------------------")
         
         try:
             #Tenta fazer a conexao (endereco do servidor, porta 8001), envia a requisicao em formato "bytes", codec "UTF-8", pela conexao
-            socket_sender.connect((SERVER, 8001))
+            socket_sender.connect((serverAddress, 8001))
             socket_sender.send(bytes(serializedRequest, 'UTF-8'))
         except:
             pass
@@ -101,8 +100,15 @@ class Station():
     
     #Funcao para registrar a estacao
     def registerStation(self, coord_x, coord_y, unitary_price):
-
+        
         global requestID
+
+        #Garante que a criacao da estacao so acontece uma vez
+        #O servidor esta condicionado a executar requisicoes de indice 0 mesmo que a ultima requisicao para certo endereco tenha indice 0
+        #Assim sendo, e preciso colocar um indice distinto de zero para forcar que isso nao aconteca
+        #Entretanto, indices de 1 a 63 sao utilizados no ciclo normal de requisicao, entao o numero arbitrario aqui deve estar fora do intervalo
+        #Caso contrario, poderia acontecer de o cliente nao conseguir registrar um novo veiculo no endereco, pois a ultima requisicao era do indice escolhido
+        requestID = 64
         
         #ID da estacao
         stationID = input("ID para a estacao de carga (como fornecido pelo servidor): ")
@@ -115,7 +121,7 @@ class Station():
         requestContent = [requestID, 'rcs', requestParameters]
         
         #Envia a requisicao para o servidor da aplicacao
-        self.sendRequest('charge_server', requestContent)
+        self.sendRequest(requestContent)
 
         #Espera a resposta
         (_, response) = self.receiveResponse(10)
@@ -134,7 +140,7 @@ class Station():
             requestContent = [requestID, 'rcs', requestParameters]
             
             #Envia a requisicao para o servidor da aplicacao
-            self.sendRequest('charge_server', requestContent)
+            self.sendRequest(requestContent)
 
             #Espera a resposta
             (_, response) = self.receiveResponse(10)
@@ -163,7 +169,7 @@ class Station():
         requestContent = [requestID, 'gbv', [self.ID]]
         
         #Envia a requisicao para o servidor da aplicacao
-        self.sendRequest('charge_server', requestContent)
+        self.sendRequest(requestContent)
 
         #Espera a resposta
         (_, response) = self.receiveResponse(10)
@@ -172,7 +178,7 @@ class Station():
         while (response == ""):
             
             #Envia a requisicao para o servidor da aplicacao
-            self.sendRequest('charge_server', requestContent)
+            self.sendRequest(requestContent)
 
             #Espera a resposta
             (_, response) = self.receiveResponse(10)
@@ -205,7 +211,7 @@ class Station():
         requestContent = [requestID, 'fcs', [self.ID]]
         
         #Envia a requisicao para o servidor da aplicacao
-        self.sendRequest('charge_server', requestContent)
+        self.sendRequest(requestContent)
 
         #Espera a resposta
         (_, response) = self.receiveResponse(10)
@@ -214,7 +220,7 @@ class Station():
         while (response != "OK" and response != "NF"):
             
             #Envia a requisicao para o servidor da aplicacao
-            self.sendRequest('charge_server', requestContent)
+            self.sendRequest(requestContent)
 
             #Espera a resposta
             (_, response) = self.receiveResponse(10)
@@ -235,6 +241,9 @@ requestID = "0"
 
 #Cria um dicionario dos atributos da estacao
 dataTable = {}
+
+#Pergunta endereco do servidor
+serverAddress = input("Insira o endereço IP do servidor: ")
 
 #Verifica se o arquivo de texto "station_data.json" esta presente, e caso nao esteja...
 if (verifyFile(["stationdata"], "station_data.json") == False):

@@ -26,7 +26,9 @@ class User():
         self.payment_history = {}
     
     #Funcao para enviar uma requisicao ao servidor
-    def sendRequest(self, serverName, request):
+    def sendRequest(self, request):
+
+        global serverAddress
 
         #Cria o soquete e torna a conexao reciclavel
         socket_sender = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -34,20 +36,19 @@ class User():
         socket_sender.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
 
         #Obtem o endereco do servidor com base em seu nome
-        SERVER = socket.gethostbyname(serverName)
+        #SERVER = socket.gethostbyname(serverName)
 
         #Serializa a requisicao utilizando json
         serializedRequest = json.dumps(request)
 
         #print("--------------------------------------------")
-        #print(serverName)
-        #print(SERVER)
+        #print(serverAddress)
         #print(serializedRequest)
         #print("--------------------------------------------")
         
         try:
             #Tenta fazer a conexao (endereco do servidor, porta 8001), envia a requisicao em formato "bytes", codec "UTF-8", pela conexao
-            socket_sender.connect((SERVER, 8001))
+            socket_sender.connect((serverAddress, 8001))
             socket_sender.send(bytes(serializedRequest, 'UTF-8'))
         except:
             pass
@@ -103,14 +104,23 @@ class User():
     
 
     #Funcao para registrar o veiculo
-    def registerVehicle(self, requestID):
+    def registerVehicle(self):
         
+        global requestID
+
+        #Garante que a criacao do veiculo so acontece uma vez
+        #O servidor esta condicionado a executar requisicoes de indice 0 mesmo que a ultima requisicao para certo endereco tenha indice 0
+        #Assim sendo, e preciso colocar um indice distinto de zero para forcar que isso nao aconteca
+        #Entretanto, indices de 1 a 63 sao utilizados no ciclo normal de requisicao, entao o numero arbitrario aqui deve estar fora do intervalo
+        #Caso contrario, poderia acontecer de o cliente nao conseguir registrar um novo veiculo no endereco, pois a ultima requisicao era do indice escolhido
+        requestID = 64
+
         #Formula o conteudo da requisicao a ser enviada
         #O conteudo e uma lista de ao menos 4 elementos (ID de quem requeriu, ID da requisicao, nome da requisicao e parametros da mesma)
         requestContent = [requestID, 'rve', '']
         
         #Envia a requisicao para o servidor da aplicacao
-        self.sendRequest('charge_server', requestContent)
+        self.sendRequest(requestContent)
 
         #Espera a resposta
         (add, response) = self.listenToResponse()
@@ -119,7 +129,7 @@ class User():
         while (len(response) != 24):
             
             #Envia novamente a requisicao e espera a resposta
-            self.sendRequest('charge_server', requestContent)
+            self.sendRequest(requestContent)
 
             (add, response) = self.listenToResponse()
 
@@ -133,8 +143,9 @@ class User():
         return response
     
     #Solicita distancia do posto mais proximo
-    def nearestSpotRequest(self, requestID):
+    def nearestSpotRequest(self):
         
+        global requestID
         global nearestStationID
         global nearestStationDistance
         global nearestStationPrice
@@ -145,7 +156,7 @@ class User():
         #Confeccina o conteudo da requisicao e envia 1x
         requestParameters = [localDataTable["coord_x"],localDataTable["coord_y"]]
         requestContent = [requestID, 'nsr', requestParameters]
-        self.sendRequest('charge_server', requestContent)
+        self.sendRequest(requestContent)
         (add, response) = self.listenToResponse()
 
         #Atualiza o ID da requisicao
@@ -176,7 +187,7 @@ class User():
             nearestStationPrice = response[2]
     
     #Funca que gera a guia de pagamento para recarga
-    def simulateForNearestSpot(self, requestID):
+    def simulateForNearestSpot(self):
 
         global nearestStationID
         global nearestStationPrice
@@ -190,8 +201,9 @@ class User():
             nextPurchaseID, nextAmountToPay = simulatePayment(self.capacity, self.battery_level, nearestStationPrice)
 
     #Funcao que efetua o pagamento da ultima guia gerada
-    def payForNearestSpot(self, requestID):
+    def payForNearestSpot(self):
 
+        global requestID
         global nearestStationID
 
         global nextPurchaseID
@@ -206,13 +218,13 @@ class User():
             requestContent = [requestID, 'bcs', requestParameters]
 
             #Envia a requisicao
-            self.sendRequest('charge_server', requestContent)
+            self.sendRequest(requestContent)
             (add, response) = self.listenToResponse()
 
             #Se nao receber resposta valida, repete o envio (so acontece caso o servidor esteja indisponivel)
             while(response == ""):
 
-                self.sendRequest('charge_server', requestContent)
+                self.sendRequest(requestContent)
                 (add, response) = self.listenToResponse()
 
             #Exibe resultado da operacao
@@ -231,8 +243,9 @@ class User():
             nextPurchaseID = ""
     
     #Funcao para obter informacoes da compra no indice a seguir
-    def purchaseBackward(self, requestID):
+    def purchaseBackward(self):
         
+        global requestID
         global purchaseHistoryIndex
         global displayPurchaseID
         global displayPurchaseTotal
@@ -244,13 +257,13 @@ class User():
         requestContent = [requestID, 'gpr', requestParameters]
 
         #Envia a requisicao
-        self.sendRequest('charge_server', requestContent)
+        self.sendRequest(requestContent)
         (add, response) = self.listenToResponse()
 
         #Se nao receber resposta valida, repete o envio (so acontece caso o servidor esteja indisponivel)
         while(response == ""):
 
-            self.sendRequest('charge_server', requestContent)
+            self.sendRequest(requestContent)
             (add, response) = self.listenToResponse()
 
         #Atualiza o ID de requisicao
@@ -267,13 +280,13 @@ class User():
             requestContent = [requestID, 'gpr', requestParameters]
 
             #Envia a requisicao
-            self.sendRequest('charge_server', requestContent)
+            self.sendRequest(requestContent)
             (add, response) = self.listenToResponse()
 
             #Se nao receber resposta valida, repete o envio (so acontece caso o servidor esteja indisponivel)
             while(response == ""):
 
-                self.sendRequest('charge_server', requestContent)
+                self.sendRequest(requestContent)
                 (add, response) = self.listenToResponse()
 
             #Atualiza o ID de requisicao
@@ -294,8 +307,9 @@ class User():
         displayPurchaseCharge = response[3]
     
     #Funcao para obter informacoes da compra no indice a seguir
-    def purchaseForward(self, requestID):
+    def purchaseForward(self):
         
+        global requestID
         global purchaseHistoryIndex
         global displayPurchaseID
         global displayPurchaseTotal
@@ -307,13 +321,13 @@ class User():
         requestContent = [requestID, 'gpr', requestParameters]
 
         #Envia a requisicao
-        self.sendRequest('charge_server', requestContent)
+        self.sendRequest(requestContent)
         (add, response) = self.listenToResponse()
 
         #Se nao receber resposta valida, repete o envio (so acontece caso o servidor esteja indisponivel)
         while(response == ""):
 
-            self.sendRequest('charge_server', requestContent)
+            self.sendRequest(requestContent)
             (add, response) = self.listenToResponse()
 
         #Atualiza o ID de requisicao
@@ -330,13 +344,13 @@ class User():
             requestContent = [requestID, 'gpr', requestParameters]
 
             #Envia a requisicao
-            self.sendRequest('charge_server', requestContent)
+            self.sendRequest(requestContent)
             (add, response) = self.listenToResponse()
 
             #Se nao receber resposta valida, repete o envio (so acontece caso o servidor esteja indisponivel)
             while(response == ""):
 
-                self.sendRequest('charge_server', requestContent)
+                self.sendRequest(requestContent)
                 (add, response) = self.listenToResponse()
 
             #Atualiza o ID de requisicao
@@ -419,12 +433,14 @@ displayPurchaseCharge = "0"
 #Cria um dicionario dos atributos do veiculo
 dataTable = {}
 
+#Pergunta endereco do servidor
+serverAddress = input("Insira o endereço IP do servidor: ")
 
 #Verifica se o arquivo de texto "ID.txt" esta presente, e caso nao esteja...
 if (verifyFile(["vehicledata"], "ID.txt") == False):
     
     #Cria um novo arquivo
-    writeFile(["vehicledata", "ID.txt"], vehicle.registerVehicle(requestID))
+    writeFile(["vehicledata", "ID.txt"], vehicle.registerVehicle())
 
 #Verifica se o arquivo de texto "vehicle_data.json" esta presente, e caso nao esteja...
 if (verifyFile(["vehicledata"], "vehicle_data.json") == False):
@@ -457,21 +473,21 @@ critical_battery_text = ctk.StringVar()
 critical_battery = ctk.CTkLabel(frame,textvariable=critical_battery_text)
 critical_battery.pack(pady=20)
 
-spotRequestButton = ctk.CTkButton(frame,text=' Obter a distância até a estação de recarga mais próxima e o preço do KWh ',command=lambda:vehicle.nearestSpotRequest(requestID))
+spotRequestButton = ctk.CTkButton(frame,text=' Obter a distância até a estação de recarga mais próxima e o preço do KWh ',command=lambda:vehicle.nearestSpotRequest())
 spotRequestButton.pack(pady=10)
 
 distance_info_text = ctk.StringVar()
 distance_info = ctk.CTkLabel(frame,textvariable=distance_info_text)
 distance_info.pack(pady=20)
 
-simulatePayButton = ctk.CTkButton(frame,text=' Gerar guia de pagamento ',command=lambda:vehicle.simulateForNearestSpot(requestID))
+simulatePayButton = ctk.CTkButton(frame,text=' Gerar guia de pagamento ',command=lambda:vehicle.simulateForNearestSpot())
 simulatePayButton.pack(pady=10)
 
 next_purchase_info_text = ctk.StringVar()
 next_purchase_info = ctk.CTkLabel(frame,textvariable=next_purchase_info_text)
 next_purchase_info.pack(pady=20)
 
-bookButton = ctk.CTkButton(frame,text=' Recarregar totalmente na estação mais próxima ',command=lambda:vehicle.payForNearestSpot(requestID))
+bookButton = ctk.CTkButton(frame,text=' Recarregar totalmente na estação mais próxima ',command=lambda:vehicle.payForNearestSpot())
 bookButton.pack(pady=10)
 
 next_purchase_result_text = ctk.StringVar()
@@ -494,10 +510,10 @@ purchaseHistoryCharge = ctk.StringVar()
 purchaseHistoryChargeLabel = ctk.CTkLabel(frame,textvariable=purchaseHistoryCharge)
 purchaseHistoryChargeLabel.pack(pady=10)
 
-bckButton = ctk.CTkButton(frame,text=' < ',command=lambda:vehicle.purchaseBackward(requestID))
+bckButton = ctk.CTkButton(frame,text=' < ',command=lambda:vehicle.purchaseBackward())
 bckButton.pack(pady=5)
 
-bckButton = ctk.CTkButton(frame,text=' > ',command=lambda:vehicle.purchaseForward(requestID))
+bckButton = ctk.CTkButton(frame,text=' > ',command=lambda:vehicle.purchaseForward())
 bckButton.pack(pady=20)
 
 newThread = threading.Thread(target=infoUpdate, args=())
