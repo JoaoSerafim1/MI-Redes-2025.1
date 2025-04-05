@@ -1,11 +1,8 @@
 # Instalação e uso da aplicação
+
 ## Requisitos básicos
 - Sistema Operacional compatível com protocolo TCP-IP e Python (ex: [Ubuntu](https://ubuntu.com/download), [Windows](https://www.microsoft.com/pt-br/windows/))
 - [Python](https://www.python.org/downloads/) 3.9
-
-## 📦 Instalando e utilizando as diferentes versões do sistema distribuído
-
-As versões do sistema estão disponíveis individualmente neste repositório online em formato .zip, na sessão "Releases" (encontrada no canto direito da tela inicial do repositório na maioria dos navegadores)
 
 #### AVISO: Antes de utilizar qualquer das interfaces gráficas presentes em alguns dos programas python, certifique-se de as bibliotecas "TKinter" e "Custom TKinter" estão instaladas diretamente na máquina que exibirá tais interfaces.
 ```console
@@ -13,6 +10,10 @@ sudo apt-get install python3-tk -y && \
 pip3 install customtkinter --break-system-packages
 ```
 ##### (Instala as bibliotecas em sistemas tipo Linux, consulte documentação do Python para fazer o mesmo em outros sistemas operacionais)
+
+## 📦 Instalando e utilizando as diferentes versões do sistema distribuído
+
+As versões do sistema destinadas a usuários distintos estão disponíveis individualmente neste repositório online em formato .zip, na sessão "Releases" (encontrada no canto direito da tela inicial do repositório na maioria dos navegadores).
 
 ### ☁️ Servidor
 
@@ -29,7 +30,7 @@ O recebimento de mensagens, bem como a execução de ações em cima do banco de
 Logs possuem o seguinte formato:
 - Título: YYYY-MM-DDD = Data local
 - Conteúdo:
-  - [YYYY-MM-DDD hh-mm-ss.ssssss] => Data e horário locais (24 horas)
+  - [YYYY-MM-DDD hh:mm:ss.ssssss] => Data e horário locais (24 horas)
   - NAME:
   - NOME-DA-ENTRADA => Informação do nome da entrada no log
     - RVMSG:         Mensagem recebida
@@ -52,6 +53,53 @@ Logs possuem o seguinte formato:
 Pressionar a tecla ENTER durante a execução do servidor inicia o processo de encerramento da aplicação, como já explicitado anteriormente na saída do terminal.
 
 ![Tela de encerramento](/imgs/server_terminating.png?raw=true "Resultado da sequência de encerramento do servidor")
+
+### 🔋 Estação de Carga
+
+O arquivo .zip da estação possui ```station``` antes de seu número de versão. Para iniciar o programa referente à estação de carga, execute o arquivo ```client.py```, encontrado no diretório principal da aplicação.
+
+![Tela inicial](/imgs/station_start_screen.png?raw=true "A aplicação requer o endereço IP do servidor logo no seu início")
+
+Ao usuário será pedida a entrada do endereço IP do servidor, seguido de informações da estação e do ID para cadastro de estação fornecido por um administrador do sistema com acesso ao terminal do servidor. É importante notar que o programa não detecta e não corrige um endereço IP incorreto, sendo necessária a reinicialização para que esse valor seja mudado. Ademais, caso um ID correto falhe em cadastrar, basta repeti-lo 1 ou 2 vezes.
+
+Após tais informações serem fornecidas e em cada inicialização subsequente do programa, o terminal exibirá o ID da estação e o preço unitário de seu KWh.
+
+![Tela após o cadastro](/imgs/station_after_signup.png?raw=true "Cadastro da estação e tela de boas-vindas")
+
+Quando um veículo agenda com sucesso uma recarga, a estação agendada receberá suas informações em até 1 minuto, inicando o processo de recarga.
+
+Na atual versão de teste do programa, a recarga é feita apenas pressionando a tecla ENTER no terminal da estação.
+
+![Tela após agendamento de recarga](/imgs/station_recharge.png?raw=true "Processo de recarga de um veículo agendado")
+
+### 🚘 Veículo (Usuário Final)
+
+Terceiro e último módulo do sistema, a parte referente ao veículo possui ```vehicle``` antes de seu número de versão do arquivo .zip. Para iniciar a aplicação (incluindo janela gráfica), execute o arquivo ```client.py```, encontrado no diretório principal da aplicação.
+
+![Tela inicial](/imgs/vehicle_start_screen.png?raw=true "A aplicação requer o endereço IP do servidor logo no seu início")
+
+O processo de cadastro de um veículo só requer ao usuário inserir o endereço IP do servidor e a capacidade em KWh do veículo. Assim como para a estação de recarga, o programa não detecta e não corrige um endereço IP incorreto, e portanto pode ser necessária a reinicialização do programa caso seja feita uma entrada incorreta.
+
+A seguir, a interface gráfica do programa será exibida, contendo todas as informações referentes ao nível de carga do veículo (incluindo aviso caso fique abaixo de 30%), estação mais próxima, próxima compra e histórico de compras, bem como botões para executar ações de busca de estação disponível mais próxima (e suas informações), geração de guia de pagamento de serviço, confirmação de pagamento e navegação do histórico de compras.
+
+![Interface gráfica da aplicação do veículo, figura 1](/imgs/vehicle_after_signup.png?raw=true "Informações do veículo e entrada de comandos para realizar serviços de recarga")
+
+Um processo de recarga bem-sucedido inicia-se com a busca pela estação disponível mais próxima, utilizando para tal o botão ```Obter a distância até a estação de recarga mais próxima e o preço do KWh"```.
+As informações obtidas em tal passo serão utilizadas na geração da guia de pagamento e na tentativa de agendamento subsequentes.
+
+Em seguida, o usuário deve gerar uma guia de pagamento por meio do botão ```Gerar guia de pagamento```. O processo de geração de guia de pagamento é tão somente um PLACEHOLDER para a utilização de uma API de serviço de pagamento real (ex: BoaCompra), e gera um identificador único uuid4.
+
+Por fim, o usuário deve confirmar que efetuou o pagamento pressionando o botão ```Recarregar totalmente na estação mais próxima```.
+
+Se entre a busca da estação e a confirmação do pagamento nenhun outro veículo agendar com sucesso o local de recarga, o usuãrio conseguirá agendar a recarga de seu veículo, cabendo ao software de controle do equipamento da proprietário da estação de carga verificar o ID do veículo quando este chegar até o ponto e então realizar a recarga.
+
+![Interface gráfica da aplicação do veículo, figura 2](/imgs/vehicle_recharge_success.png?raw=true "Resultado de um agendamento de recarga bem-sucedido")
+
+No entanto, caso outro veículo consiga agendar o local de recarga durante a compra, o usuário em questão será notificado de que não conseguiu agendamento e que sua compra foi automaticamente cancelada (estornada), o que de fato acontece no servidor (é chamada uma função PLACEHOLDER para API de serviço de pagamentos).
+
+Qualquer usuário com ao menos uma compra bem-sucedida realizada pode navegar seu histórico de compras por meio dos botões ```<``` e ```>```. Note que os espaços referentes às informações da compra permanecem vazios até que um dos botões seja pressionado, mesmo após ao menos uma compra ser feita.
+
+![Interface gráfica da aplicação do veículo, figura 3](/imgs/vehicle_recharge_fail.png?raw=true "Resultado de um agendamento de recarga mal-sucedido e informações de uma compra realizada anteriormente")
 
 ## 🐧 🐢 Como utilizar o arquivo shell script (dockerscript.sh) para executar ações de construção, modificação e acesso interativo do/ao ambiente docker:
 ```console
@@ -94,7 +142,7 @@ bash dockerscript.sh update
 ```console
 bash dockerscript.sh control 2
 ```
-#### AVISO: Antes de realizar um acesso remoto a interfaces gráficas, certifique-se de a biblioteca "x11 Server Utils" para Linux está instalada, e em seguida habilite a execução remota de programas.
+#### AVISO: Antes de realizar um acesso remoto a interfaces gráficas, certifique-se de a biblioteca "x11 Server Utils" para Linux está instalada diretamente na máquina que exibirá tais interfaces, e em seguida habilite a execução remota de programas.
 ```console
 sudo apt-get install x11-xserver-utils -y
 ```
