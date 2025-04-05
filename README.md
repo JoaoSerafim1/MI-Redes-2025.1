@@ -91,7 +91,7 @@ Em seguida, o usuário deve gerar uma guia de pagamento por meio do botão ```Ge
 
 Por fim, o usuário deve confirmar que efetuou o pagamento pressionando o botão ```Recarregar totalmente na estação mais próxima```.
 
-Se entre a busca da estação e a confirmação do pagamento nenhun outro veículo agendar com sucesso o local de recarga, o usuãrio conseguirá agendar a recarga de seu veículo, cabendo ao software de controle do equipamento da proprietário da estação de carga verificar o ID do veículo quando este chegar até o ponto e então realizar a recarga.
+Se entre a busca da estação e a confirmação do pagamento nenhum outro veículo agendar com sucesso o local de recarga, o usuário conseguirá agendar a recarga de próprio seu veículo, cabendo ao software de controle do equipamento da proprietário da estação de carga verificar o ID do veículo quando este chegar até o ponto e então realizar a recarga.
 
 ![Interface gráfica da aplicação do veículo, figura 2](/imgs/vehicle_recharge_success.png?raw=true "Resultado de um agendamento de recarga bem-sucedido")
 
