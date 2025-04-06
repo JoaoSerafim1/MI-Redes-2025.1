@@ -117,7 +117,7 @@ bash dockerscript.sh ACAO NUM
 bash dockerscript.sh build
 ```
 
-### $${\color{green}"run"}$$ instancia os containers para a aplição (1 de servidor, 2 de estações e 4 de veículos).
+### $${\color{green}"run"}$$ instancia os containers para as diferentes versões da aplicação (1 de servidor, 2 de estações e 4 de veículos).
 
 - Formato fixo:
 ```console
