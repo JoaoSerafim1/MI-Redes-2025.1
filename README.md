@@ -84,6 +84,8 @@ A seguir, a interface gráfica do programa será exibida, contendo todas as info
 
 ![Interface gráfica da aplicação do veículo, figura 1](/imgs/vehicle_after_signup.png?raw=true "Informações do veículo e entrada de comandos para realizar serviços de recarga")
 
+#### IMPORTANTE: Não cabe ao usuário final, por meio da interface gráfica ou do terminal, alterar as informações referentes ao nível da bateria, da posição do veículo ou mesmo da capacidade de carga (após o cadastro). Tais informações estão salvas no arquivo vehicle_data.json, presente na pasta /vehicledata/ a partir do diretório principal. A aplicação está configurado para monitorar constantemente tal arquivo de configuração e refletir quaisquer mudanças diretamente na aplicação. Assim sendo, é esperado que o arquivo de propriedades seja alterado por softwares terceiros, os quais deve fazer uso de sensores que não estão presentes no atual ambiente de desenvolvimento e teste.
+
 Um processo de recarga bem-sucedido inicia-se com a busca pela estação disponível mais próxima, utilizando para tal o botão ```Obter a distância até a estação de recarga mais próxima e o preço do KWh"```.
 As informações obtidas em tal passo serão utilizadas na geração da guia de pagamento e na tentativa de agendamento subsequentes.
 
@@ -91,7 +93,7 @@ Em seguida, o usuário deve gerar uma guia de pagamento por meio do botão ```Ge
 
 Por fim, o usuário deve confirmar que efetuou o pagamento pressionando o botão ```Recarregar totalmente na estação mais próxima```.
 
-Se entre a busca da estação e a confirmação do pagamento nenhum outro veículo agendar com sucesso o local de recarga, o usuário conseguirá agendar a recarga de próprio seu veículo, cabendo ao software de controle do equipamento da proprietário da estação de carga verificar o ID do veículo quando este chegar até o ponto e então realizar a recarga.
+Se entre a busca da estação e a confirmação do pagamento nenhum outro veículo agendar com sucesso o local de recarga, o usuário conseguirá agendar a recarga de seu próprio veículo, cabendo ao software de controle do equipamento da estação de carga verificar o ID do veículo quando este chegar até o ponto e então realizar a recarga.
 
 ![Interface gráfica da aplicação do veículo, figura 2](/imgs/vehicle_recharge_success.png?raw=true "Resultado de um agendamento de recarga bem-sucedido")
 
